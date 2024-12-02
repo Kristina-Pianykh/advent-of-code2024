@@ -91,17 +91,12 @@ func part_two(file_path string) int {
 	count := make(map[int]int)
 	for i := 0; i < len(right_slice); i++ {
 		val := right_slice[i]
-		if _, ok := count[val]; !ok {
-			count[val] = 0
-		}
 		count[val]++
 	}
 
 	acc := 0
 	for i := 0; i < len(left_slice); i++ {
-		if val, ok := count[left_slice[i]]; ok {
-			acc += left_slice[i] * val
-		}
+		acc += left_slice[i] * count[left_slice[i]]
 	}
 	return acc
 }
