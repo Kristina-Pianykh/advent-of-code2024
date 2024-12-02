@@ -1,6 +1,6 @@
 **/py
 **/*.py
-**/input.txt
+**/*.txt
 
 # Binaries for programs and plugins
 *.exe
