@@ -1,6 +1,7 @@
 **/py
 **/*.py
 **/*.txt
+playground
 
 # Binaries for programs and plugins
 *.exe
