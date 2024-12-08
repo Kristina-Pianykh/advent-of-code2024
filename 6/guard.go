@@ -86,7 +86,7 @@ func (m *LabMap) advance(dir_grid *[][][]byte) {
 	(*m.grid)[m.pos.y][m.pos.x] = 'X'
 }
 
-func (m *LabMap) solve() {
+func (m *LabMap) calc_path() {
 	for {
 		x_inc := advance_coordinates[m.pos.v][1]
 		y_inc := advance_coordinates[m.pos.v][0]
@@ -108,13 +108,17 @@ func loop_detected(arr *[]byte) bool {
 	return false
 }
 
-func (m *LabMap) solve2(dir_grid *[][][]byte, start_pos *Coordinate) int {
+func (m *LabMap) count_loops(dir_grid *[][][]byte, start_pos *Coordinate) int {
 	loop_cnt := 0
 
 	for y := range *m.grid {
 		for x := range (*m.grid)[y] {
 
 			if x == start_pos.x && y == start_pos.y {
+				continue
+			}
+
+			if (*m.grid)[y][x] == '#' {
 				continue
 			}
 
@@ -169,13 +173,13 @@ func main() {
 	(*m.grid)[m.pos.y][m.pos.x] = 'X'
 
 	//part 1
-	m.solve()
+	m.calc_path()
 	count_x(m.grid)
 	fmt.Printf("part 1 | move count: %d\n", count_x(m.grid))
 
 	//part 2
 	dir_grid := init_dir_grid(ROWS, COLS)
-	loop_cnt := m.solve2(dir_grid, guard_pos)
+	loop_cnt := m.count_loops(dir_grid, guard_pos)
 	fmt.Printf("part 2 | loop count: %d\n", loop_cnt)
 }
 
