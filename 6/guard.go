@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"log"
 	"os"
-	"strings"
 )
+
+const ROWS = 130
+const COLS = 130
 
 type Coordinate struct {
 	x int
@@ -171,7 +174,7 @@ func main() {
 	fmt.Printf("part 1 | move count: %d\n", count_x(m.grid))
 
 	//part 2
-	dir_grid := init_dir_grid(130, 130)
+	dir_grid := init_dir_grid(ROWS, COLS)
 	loop_cnt := m.solve2(dir_grid, guard_pos)
 	fmt.Printf("part 2 | loop count: %d\n", loop_cnt)
 }
@@ -217,31 +220,20 @@ func read_file(file_path string) ([][]byte, error) {
 	}
 	defer file.Close()
 
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, errors.New("Error getting file stats")
-	}
-
-	size := stat.Size()
-
-	content := make([]byte, size)
-	_, err = file.Read(content)
-	if err != nil {
-		return nil, errors.New("Error reading file")
-	}
-
-	// TODO: don't convert to string, split at byte \n
-	stringified := string(content)
-	if strings.HasSuffix(stringified, "\n") {
-		stringified = stringified[:len(stringified)-1]
-	}
-	lines := strings.Split(strings.ReplaceAll(stringified, " ", ""), "\n")
-	bytes := make([][]byte, len(lines))
-
+	lines := make([][]byte, ROWS)
 	for i := range lines {
-		bytes[i] = []byte(lines[i])
+		lines[i] = make([]byte, COLS)
 	}
-	return bytes, nil
+
+	scanner := bufio.NewScanner(file)
+	i := 0
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		copy(lines[i], line)
+		i++
+	}
+
+	return lines, nil
 }
 
 func reset_dir_grid(grid *[][][]byte) {
