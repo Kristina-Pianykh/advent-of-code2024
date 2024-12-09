@@ -27,9 +27,7 @@ func main() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		test_v, nums := parse_line(line)
-		// nums = []int{1, 2, 3, 4}
-		fmt.Printf("%d: %v\n", test_v, nums)
-		is_correct_eq(nums)
+		is_correct_eq(test_v, nums)
 
 		if slices.Contains(results, test_v) {
 			acc += test_v
@@ -37,43 +35,58 @@ func main() {
 		// reset results
 		results = results[:0]
 	}
-	fmt.Printf("part 1 | result: %d\n", acc)
+	fmt.Printf("result: %d\n", acc)
 }
 
-func compute(i int, nums []int, op string, acc int) {
-	// fmt.Printf("||| nums: %v\ni: %d\nop: %s\nacc: %d\n", nums, i, op, acc)
-	if op == "+" {
-		// fmt.Printf("update acc: %d + %d = %d\n\n", acc, nums[i+1], acc+nums[i+1])
+func compute(test_v, i int, nums []int, op string, acc int) {
+	if len(results) == 1 {
+		return
+	}
+	switch op {
+	case "+":
 		acc += nums[i+1]
-	} else {
-		// fmt.Printf("update acc: %d * %d = %d\n\n", acc, nums[i+1], acc*nums[i+1])
+	case "*":
 		acc *= nums[i+1]
+	case "||":
+		concat := fmt.Sprintf("%d%d", acc, nums[i+1])
+		if v, err := strconv.ParseInt(concat, 10, 64); err == nil {
+			acc = int(v)
+		}
+	default:
+		log.Fatal(fmt.Sprintf("unrecognized operator %s\n", op))
 	}
 
 	if i == len(nums)-2 {
-		results = append(results, acc)
-		// fmt.Printf("appending new result %d: %v\n", acc, results)
+		if acc == test_v {
+			results = append(results, acc)
+		}
 
-		if op == "+" {
+		switch op {
+		case "+":
 			acc -= nums[i+1]
-		} else {
+		case "*":
 			acc = acc / nums[i+1]
+		case "||":
+			acc_str := fmt.Sprintf("%d", acc)
+			prev_str := fmt.Sprintf("%d", nums[i+1])
+			if v, err := strconv.ParseInt(acc_str[:len(acc_str)-len(prev_str)], 10, 64); err == nil {
+				acc = int(v)
+			}
 		}
 
 		i--
 		return
 	}
 
-	compute(i+1, nums, "+", acc)
-	compute(i+1, nums, "*", acc)
+	compute(test_v, i+1, nums, "+", acc)
+	compute(test_v, i+1, nums, "*", acc)
+	compute(test_v, i+1, nums, "||", acc)
 }
 
-func is_correct_eq(nums []int) bool {
-	compute(0, nums, "+", nums[0])
-	compute(0, nums, "*", nums[0])
-	fmt.Printf("all results: %v\n", results)
-	fmt.Printf("len(results)=%d\n", len(results))
-	return true
+func is_correct_eq(test_v int, nums []int) {
+	compute(test_v, 0, nums, "+", nums[0])
+	compute(test_v, 0, nums, "*", nums[0])
+	compute(test_v, 0, nums, "||", nums[0])
 }
 
 func parse_line(line string) (int, []int) {
