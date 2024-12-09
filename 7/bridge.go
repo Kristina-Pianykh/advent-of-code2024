@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
-var results []int = []int{}
-
 func main() {
+	start := time.Now()
 	file, err := os.Open("input.txt")
 	if err != nil {
 		log.Fatal("Error opening file")
@@ -21,72 +20,92 @@ func main() {
 
 	var (
 		scanner *bufio.Scanner = bufio.NewScanner(file)
-		acc     int            = 0
+		acc1    int            = 0
+		acc2    int            = 0
 	)
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		test_v, nums := parse_line(line)
-		is_correct_eq(test_v, nums)
+		target, nums := parse_line(line)
 
-		if slices.Contains(results, test_v) {
-			acc += test_v
+		if is_correct_eq(target, nums, []string{"+", "*"}) {
+			acc1 += target
 		}
-		// reset results
-		results = results[:0]
+
+		if is_correct_eq(target, nums, []string{"+", "*", "||"}) {
+			acc2 += target
+		}
 	}
-	fmt.Printf("result: %d\n", acc)
+	fmt.Printf("part 1 | result: %d\n", acc1)
+	fmt.Printf("part 2 | result: %d\n", acc2)
+
+	t := time.Now()
+	fmt.Printf("Took %v\n", t.Sub(start))
 }
 
-func compute(test_v, i int, nums []int, op string, acc int) {
-	if len(results) == 1 {
-		return
+func compute(target, i int, nums []int, op string, acc int, ops []string) bool {
+	if acc > target {
+		return false
 	}
+	if i == len(nums)-1 {
+		return acc == target
+	}
+
 	switch op {
 	case "+":
 		acc += nums[i+1]
 	case "*":
 		acc *= nums[i+1]
 	case "||":
-		concat := fmt.Sprintf("%d%d", acc, nums[i+1])
-		if v, err := strconv.ParseInt(concat, 10, 64); err == nil {
-			acc = int(v)
-		}
+		acc = acc*pow(10, count_digits(nums[i+1])) + nums[i+1]
 	default:
 		log.Fatal(fmt.Sprintf("unrecognized operator %s\n", op))
 	}
 
-	if i == len(nums)-2 {
-		if acc == test_v {
-			results = append(results, acc)
+	for _, op := range ops {
+		if compute(target, i+1, nums, op, acc, ops) {
+			return true
 		}
-
-		switch op {
-		case "+":
-			acc -= nums[i+1]
-		case "*":
-			acc = acc / nums[i+1]
-		case "||":
-			acc_str := fmt.Sprintf("%d", acc)
-			prev_str := fmt.Sprintf("%d", nums[i+1])
-			if v, err := strconv.ParseInt(acc_str[:len(acc_str)-len(prev_str)], 10, 64); err == nil {
-				acc = int(v)
-			}
-		}
-
-		i--
-		return
 	}
 
-	compute(test_v, i+1, nums, "+", acc)
-	compute(test_v, i+1, nums, "*", acc)
-	compute(test_v, i+1, nums, "||", acc)
+	return false
 }
 
-func is_correct_eq(test_v int, nums []int) {
-	compute(test_v, 0, nums, "+", nums[0])
-	compute(test_v, 0, nums, "*", nums[0])
-	compute(test_v, 0, nums, "||", nums[0])
+func count_digits(n int) int {
+	cnt := 0
+
+	for {
+		n = n / 10
+		cnt++
+		if n == 0 {
+			break
+		}
+	}
+	return cnt
+}
+
+func pow(base, power int) int {
+	acc := base
+	if power == 0 {
+		return 1
+	}
+	for {
+		if power == 1 {
+			break
+		}
+		acc *= base
+		power--
+	}
+	return acc
+}
+
+func is_correct_eq(target int, nums []int, ops []string) bool {
+	for _, op := range ops {
+		if compute(target, 0, nums, op, nums[0], ops) {
+			return true
+		}
+	}
+	return false
 }
 
 func parse_line(line string) (int, []int) {
