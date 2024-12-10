@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -57,7 +58,7 @@ func compute(target, i int, nums []int, op string, acc int, ops []string) bool {
 	case "*":
 		acc *= nums[i+1]
 	case "||":
-		acc = acc*pow(10, count_digits(nums[i+1])) + nums[i+1]
+		acc = acc*pow10(count_digits(nums[i+1])) + nums[i+1]
 	default:
 		log.Fatal(fmt.Sprintf("unrecognized operator %s\n", op))
 	}
@@ -72,31 +73,11 @@ func compute(target, i int, nums []int, op string, acc int, ops []string) bool {
 }
 
 func count_digits(n int) int {
-	cnt := 0
-
-	for {
-		n = n / 10
-		cnt++
-		if n == 0 {
-			break
-		}
-	}
-	return cnt
+	return 1 + int(math.Log10(float64(n)))
 }
 
-func pow(base, power int) int {
-	acc := base
-	if power == 0 {
-		return 1
-	}
-	for {
-		if power == 1 {
-			break
-		}
-		acc *= base
-		power--
-	}
-	return acc
+func pow10(power int) int {
+	return int(math.Pow(10, float64(power)))
 }
 
 func is_correct_eq(target int, nums []int, ops []string) bool {
