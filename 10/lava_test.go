@@ -25,8 +25,6 @@ func TestReadFile(t *testing.T) {
 			log.Fatalf("expected length of row at idx %d: %d, got: %d\n", i, cols, len(grid[i]))
 		}
 	}
-
-	fmt.Printf("part 1 | score: %d\n", solve1(&grid))
 }
 
 func TestIncByte(t *testing.T) {
@@ -71,29 +69,11 @@ func TestSliceContainsCoordinate(t *testing.T) {
 	fmt.Println(slices.Contains(slc, Coordinate{2, 2}))
 }
 
-// func TestSolve1(t *testing.T) {
-// 	inputs := map[string][2]int{
-// 		"test_sample.txt": {8, 8},
-// 		// "test_sample1.txt": {7, 7},
-// 		// "test_sample2.txt": {7, 7},
-// 	}
-// 	HEIGHTS = HEIGHTS[:0]
-// 	for filename, size := range inputs {
-// 		grid, err := read_file(filename, size[0], size[1])
-// 		if err != nil {
-// 			log.Fatal(err)
-// 			os.Exit(1)
-// 		}
-// 		fmt.Printf("input %s | score: %d\n", filename, solve1(&grid))
-// 		HEIGHTS = HEIGHTS[:0]
-// 	}
-// }
-
-func TestSolve2(t *testing.T) {
+func TestSolve(t *testing.T) {
 	inputs := map[string][2]int{
-		"test_sample13.txt":  {8, 8},
-		"test_sample227.txt": {7, 7},
-		"test_sample.txt":    {7, 7},
+		"test_sample13.txt":  {7, 7},
+		"test_sample227.txt": {6, 6},
+		"test_sample.txt":    {8, 8},
 	}
 	for filename, size := range inputs {
 		grid, err := read_file(filename, size[0], size[1])
@@ -101,6 +81,8 @@ func TestSolve2(t *testing.T) {
 			log.Fatal(err)
 			os.Exit(1)
 		}
-		fmt.Printf("input %s | rating: %d\n", filename, solve2(&grid))
+		score, rating := solve(&grid, size[0], size[1])
+		fmt.Printf("input %s | score: %d\n", filename, score)
+		fmt.Printf("input %s | rating: %d\n\n", filename, rating)
 	}
 }
