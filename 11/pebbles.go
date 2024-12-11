@@ -12,52 +12,84 @@ import (
 )
 
 func main() {
-	stones, err := read_file("input.txt")
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-	fmt.Printf("%v\n", stones)
-	blinks := 25
-	fmt.Printf("part 1 | stones: %d\n", solve(blinks, &stones))
-	// blinks := 75
+	// stones, err := read_file("blink")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	os.Exit(1)
+	// }
+	// fmt.Printf("%v\n", stones)
+	// blinks := 25
+	// fmt.Printf("part 1 | stones: %d\n", solve(blinks, &stones))
+	blinks := 75
+	solve(blinks)
 	// fmt.Printf("part 2 | stones: %d\n", solve(blinks, &stones))
 }
 
-func solve(blink_n int, stones *[]int) int {
-	var new_stones []int
+func solve(blink_n int) {
+	var (
+		filename_read  string
+		filename_write string
+		reader         *bufio.Scanner
+		writer         *bufio.Writer
+		line_idx       int
+		val            int
+	)
 
 	for blink := 0; blink < blink_n; blink++ {
-		fmt.Printf("blink i: %d; stones: %d\n", blink, len(*stones))
-		new_stones = make([]int, 0, len(*stones)*2)
-		// fmt.Printf("new_stones=%v\n", new_stones)
+		line_idx = 0
+		filename_read = fmt.Sprintf("blink_%d.txt", blink)
+		filename_write = fmt.Sprintf("blink_%d.txt", blink+1)
+		file_read, err1 := os.Open(filename_read)
+		file_write, err2 := os.Create(filename_write)
 
-		for _, v := range *stones {
-			// fmt.Printf("%d\n", v)
+		if err1 != nil {
+			log.Fatal(err1)
+		}
+
+		if err2 != nil {
+			log.Fatal(err2)
+		}
+		reader = bufio.NewScanner(file_read)
+		writer = bufio.NewWriter(file_write)
+
+		for reader.Scan() {
+			str := reader.Text()
+			v, err := strconv.ParseInt(strings.Trim(str, " "), 10, 64)
+			if err != nil {
+				log.Fatalf("%s | failed to parse int from %s\n", filename_read, str)
+			}
+			val = int(v)
+
 			switch {
-			case v == 0:
+			case val == 0:
 				// fmt.Printf("%d --> 0\n", v)
-				new_stones = append(new_stones, 1)
-			case even_digits(v):
-				n1, n2 := split_n(v)
+				fmt.Fprintf(writer, "%d\n", 1)
+			case even_digits(val):
+				n1, n2 := split_n(val)
 				// fmt.Printf("split %d: %d %d\n", v, n1, n2)
-				new_stones = append(new_stones, n1)
-				new_stones = append(new_stones, n2)
+				fmt.Fprintf(writer, "%d\n", n1)
+				fmt.Fprintf(writer, "%d\n", n2)
 			default:
 				// fmt.Printf("%d * 2024\n", v)
-				new_stones = append(new_stones, v*2024)
+				fmt.Fprintf(writer, "%d\n", val*2024)
 			}
+
+			if line_idx%10000000 == 0 {
+				fmt.Printf("processed %d0 mln lines\n", line_idx/10000000)
+				writer.Flush() // Don't forget to flush!
+			}
+			line_idx++
+		}
+		fmt.Printf("%s | processed %d stones\n", filename_read, line_idx)
+
+		if err := reader.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading standard input:", err)
 		}
 
-		// fmt.Printf("new_stones=%v\n", new_stones)
-		if cap(*stones) <= len(new_stones) { // TODO: perhaps < is enough?
-			*stones = make([]int, 0, cap(*stones)*2)
-		}
-		custom_copy(stones, &new_stones)
-		// fmt.Printf("stones=%v\n\n", new_stones)
+		file_read.Close()
+		writer.Flush()
+		file_write.Close()
 	}
-
-	return len(*stones)
 }
 
 func split_n(num int) (int, int) {
