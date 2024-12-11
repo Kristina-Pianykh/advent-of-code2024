@@ -9,91 +9,71 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
-	// stones, err := read_file("blink")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
-	// fmt.Printf("%v\n", stones)
-	// blinks := 25
-	// fmt.Printf("part 1 | stones: %d\n", solve(blinks, &stones))
+	start := time.Now()
+	stones, err := read_file("input.txt")
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	fmt.Printf("%v\n", stones)
+
+	MEM[0] = []int{1}
+	// fmt.Printf("%v\n", MEM)
+
 	blinks := 75
-	solve(blinks)
+	fmt.Printf("part 1 | stones: %d\n", solve(blinks, &stones))
+	// STONES = 0
+	// blinks = 75
 	// fmt.Printf("part 2 | stones: %d\n", solve(blinks, &stones))
+	fmt.Printf("took %v\n", time.Now().Sub(start))
 }
 
-func solve(blink_n int) {
-	var (
-		filename_read  string
-		filename_write string
-		reader         *bufio.Scanner
-		writer         *bufio.Writer
-		line_idx       int
-		val            int
-	)
+func solve(blink_n int, stones *[]int) int {
+	for _, v := range *stones {
+		fmt.Printf("checking %d\n", v)
+		bfs(0, v, blink_n)
+	}
+	return STONES
+}
 
-	for blink := 0; blink < blink_n; blink++ {
-		line_idx = 0
-		filename_read = fmt.Sprintf("blink_%d.txt", blink)
-		filename_write = fmt.Sprintf("blink_%d.txt", blink+1)
-		file_read, err1 := os.Open(filename_read)
-		file_write, err2 := os.Create(filename_write)
+var STONES int = 0
+var MEM map[int][]int = make(map[int][]int, 100000000)
 
-		if err1 != nil {
-			log.Fatal(err1)
-		}
-
-		if err2 != nil {
-			log.Fatal(err2)
-		}
-		reader = bufio.NewScanner(file_read)
-		writer = bufio.NewWriter(file_write)
-
-		for reader.Scan() {
-			str := reader.Text()
-			v, err := strconv.ParseInt(strings.Trim(str, " "), 10, 64)
-			if err != nil {
-				log.Fatalf("%s | failed to parse int from %s\n", filename_read, str)
-			}
-			val = int(v)
-
-			switch {
-			case val == 0:
-				// fmt.Printf("%d --> 0\n", v)
-				fmt.Fprintf(writer, "%d\n", 1)
-			case even_digits(val):
-				n1, n2 := split_n(val)
-				// fmt.Printf("split %d: %d %d\n", v, n1, n2)
-				fmt.Fprintf(writer, "%d\n", n1)
-				fmt.Fprintf(writer, "%d\n", n2)
-			default:
-				// fmt.Printf("%d * 2024\n", v)
-				fmt.Fprintf(writer, "%d\n", val*2024)
-			}
-
-			if line_idx%10000000 == 0 {
-				fmt.Printf("processed %d0 mln lines\n", line_idx/10000000)
-				writer.Flush() // Don't forget to flush!
-			}
-			line_idx++
-		}
-		fmt.Printf("%s | processed %d stones\n", filename_read, line_idx)
-
-		if err := reader.Err(); err != nil {
-			fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		}
-
-		file_read.Close()
-		writer.Flush()
-		file_write.Close()
+func calc(n int) []int {
+	switch {
+	case even_digits(n):
+		n1, n2 := split_n(n)
+		return []int{n1, n2}
+	default:
+		return []int{n * 2024}
 	}
 }
 
+func bfs(depth, n, depth_target int) {
+	if depth == depth_target {
+		STONES++
+		// if STONES%1000 == 0 {
+		// 	fmt.Printf("%d\n", STONES)
+		// }
+		return
+	}
+	val, ok := MEM[n]
+	if !ok {
+		val = calc(n)
+		MEM[n] = val
+	}
+
+	for _, v := range val {
+		bfs(depth+1, v, depth_target)
+	}
+	return
+}
+
 func split_n(num int) (int, int) {
-	// 28676032
 	digits := count_digits(num)
 	// fmt.Printf("number of digits: %d\n", digits)
 	var num1, num2 int
@@ -119,15 +99,6 @@ func pow10(power int) int {
 	return int(math.Pow(10, float64(power)))
 }
 
-// why? because builtin copy copies the minimum of min(len(slice1), len(slice2))
-func custom_copy(dst *[]int, src *[]int) {
-	*dst = (*src)[:0]
-	*dst = append(*dst, *src...)
-	if len(*dst) != len(*src) {
-		log.Fatalf("failed to copy items from %v to %v\n", src, dst)
-	}
-}
-
 func count_digits(n int) int {
 	return 1 + int(math.Log10(float64(n)))
 }
@@ -139,15 +110,6 @@ func even_digits(num int) bool {
 	}
 	return false
 }
-
-// func inc_capacity(slc []int) []int {
-// 	new_slc := make([]int, len(slc), len(slc)*2)
-// 	res := copy(new_slc, slc)
-// 	if res != len(slc) {
-// 		log.Fatalf("failed to copy all elements from %v\n", new_slc)
-// 	}
-// 	return new_slc
-// }
 
 func read_file(file_path string) ([]int, error) {
 	file, err := os.Open(file_path)
