@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+var STONES int = 0
+var LEAVES_BY_DEPTH map[int]map[int]int = make(map[int]map[int]int, 1000000)
+
 func main() {
 	start := time.Now()
 	stones, err := read_file("input.txt")
@@ -22,10 +25,10 @@ func main() {
 
 	momoize(75)
 	blink := 25
-	fmt.Printf("part 1 | stones: %d\n", solve(blink, &stones))
+	fmt.Printf("part 1 | stones: %d\n", solve(blink, stones))
 	STONES = 0
 	blink = 75
-	fmt.Printf("part 2 | stones: %d\n", solve(blink, &stones))
+	fmt.Printf("part 2 | stones: %d\n", solve(blink, stones))
 	fmt.Printf("took %v\n", time.Now().Sub(start))
 }
 
@@ -62,15 +65,12 @@ func cache(depth, starting_n, current_n, depth_target int) int {
 	return acc
 }
 
-func solve(blink_n int, stones *[]int) int {
-	for _, v := range *stones {
+func solve(blink_n int, stones [8]int) int {
+	for _, v := range stones {
 		dfs(0, v, blink_n)
 	}
 	return STONES
 }
-
-var STONES int = 0
-var LEAVES_BY_DEPTH map[int]map[int]int = make(map[int]map[int]int, 1000000)
 
 func calc(n int) []int {
 	switch {
@@ -139,24 +139,23 @@ func even_digits(num int) bool {
 	return false
 }
 
-func read_file(file_path string) ([]int, error) {
+func read_file(file_path string) ([8]int, error) {
+	nums := [8]int{}
 	file, err := os.Open(file_path)
 	if err != nil {
-		return nil, errors.New("Error opening file")
+		return nums, errors.New("Error opening file")
 	}
 	defer file.Close()
-
-	nums := make([]int, 0, 8)
 
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
 	line := scanner.Text()
-	for _, v := range strings.Split(line, " ") {
-		int_v, err := strconv.ParseInt(strings.Trim(v, " "), 10, 64)
+	for i, v := range strings.Split(line, " ") {
+		int_v, err := strconv.Atoi(strings.Trim(v, " "))
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("failed to parse int from %s\n", v))
+			return nums, errors.New(fmt.Sprintf("failed to parse int from %s\n", v))
 		}
-		nums = append(nums, int(int_v))
+		nums[i] = int_v
 	}
 	return nums, nil
 }
