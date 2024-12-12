@@ -70,3 +70,14 @@ func TestSolve(t *testing.T) {
 	blinks := 6
 	fmt.Printf("after %d blinks: %d\n", blinks, solve(blinks, &stones))
 }
+
+func TestMapInitializer(t *testing.T) {
+	m := make(map[int]map[int]int, 10)
+	for i := 0; i < 10; i++ {
+		m[i] = make(map[int]int, 5)
+		// fmt.Printf("%d, %v\n", i, m[i])
+	}
+	for k, v := range m {
+		fmt.Printf("%d, %v\n", k, v)
+	}
+}
