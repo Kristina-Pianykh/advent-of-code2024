@@ -1,0 +1,181 @@
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+)
+
+type Coordinate struct {
+	x int
+	y int
+	v byte
+}
+
+func (c Coordinate) String() string {
+	return fmt.Sprintf("x: %d, y: %d, v: %c\n", c.x, c.y, c.v)
+}
+
+type Region struct {
+	plots     []Coordinate
+	plotType  byte
+	area      int
+	perimeter int
+	price     int
+}
+
+// ?? pass region by pointer? would it work otherwise?
+func (r Region) calcArea() {
+	r.area = len(r.plots)
+}
+
+// ?? pass region by pointer? would it work otherwise?
+func (r Region) calcPerimeter() {
+	// TODO
+}
+
+func (r Region) calcPrice() {
+	r.price = r.area * r.perimeter
+}
+
+type Grid [][]byte
+type VisitedGrid [][]bool
+
+// type Grid struct {
+// 	grid *[][]byte
+// 	pos  Coordinate
+// }
+
+var (
+	// direction: {y, x}
+	advance_coordinates map[byte][2]int = map[byte][2]int{
+		'>': {0, 1},
+		'<': {0, -1},
+		'^': {-1, 0},
+		'v': {1, 0},
+	}
+	dir_change map[byte]byte = map[byte]byte{
+		'>': 'v',
+		'<': '^',
+		'^': '>',
+		'v': '<',
+	}
+)
+
+func (g *Grid) isOffGrid(c Coordinate) bool {
+	rows := len(*g)
+	cols := len((*g)[0])
+	if c.x > cols-1 || c.y > rows-1 || c.x < 0 || c.y < 0 {
+		return true
+	}
+	return false
+}
+
+func (g *Grid) getVal(c Coordinate) (byte, error) {
+	if (*g).isOffGrid(c) {
+		return 0, errors.New(fmt.Sprintf("%v is off grid\n", c))
+	}
+	return (*g)[c.y][c.x], nil
+}
+
+// func (m *Grid) advance(dir_grid *[][][]byte) {
+// 	switch m.pos.v {
+// 	case '>':
+// 		m.move_or_turn('>', dir_grid)
+// 	case '<':
+// 		m.move_or_turn('<', dir_grid)
+// 	case '^':
+// 		m.move_or_turn('^', dir_grid)
+// 	case 'v':
+// 		m.move_or_turn('v', dir_grid)
+// 	default:
+// 		log.Fatal(fmt.Sprintf("invalid guardian position symbol: %c\n", m.pos.v))
+// 	}
+// 	(*m.grid)[m.pos.y][m.pos.x] = 'X'
+// }
+
+var VISITED VisitedGrid
+
+func main() {
+	rows, cols := 10, 10
+	grid, err := readFile("test.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	VISITED = initVisitedGrid(rows, cols)
+	fmt.Println(grid)
+}
+
+func walkGrid(grid *Grid) {
+	regions := []Region{}
+	var region Region
+
+	for y := range *grid {
+		for x, cell := range (*grid)[y] {
+			if !VISITED[x][y] {
+				region = Region{plots: []Coordinate{}, plotType: cell}
+				findRegion(grid, Coordinate{x: x, y: y, v: cell}, &region)
+			}
+			// if region == nil {
+			// 	log.Fatalf("Failed to initialize region for starting cell at %v\n", Coordinate{x: x, y: y})
+			// }
+			regions = append(regions, region)
+		}
+	}
+}
+
+func findRegion(grid *Grid, c Coordinate, region *Region) {
+	cell, err := (*grid).getVal(c)
+	if err != nil {
+		return
+	}
+
+	if (*region).plotType != cell {
+		return
+	}
+
+	if VISITED[c.y][c.x] {
+		return
+	}
+
+	c.v = cell
+	region.plots = append(region.plots, c)
+	findRegion(grid, Coordinate{x: c.x, y: c.y - 1}, region) // up
+	findRegion(grid, Coordinate{x: c.x + 1, y: c.y}, region) // right
+	findRegion(grid, Coordinate{x: c.x, y: c.y + 1}, region) // down
+	findRegion(grid, Coordinate{x: c.x - 1, y: c.y}, region) // left
+}
+
+func initVisitedGrid(rows, cols int) VisitedGrid {
+	dir_grid := make([][]bool, rows)
+	for y := range dir_grid {
+		dir_grid[y] = make([]bool, cols)
+	}
+	return dir_grid
+}
+
+func readFile(file_path string, rows, cols int) (Grid, error) {
+	file, err := os.Open(file_path)
+	if err != nil {
+		return nil, errors.New("Error opening file")
+	}
+	defer file.Close()
+
+	lines := make([][]byte, rows)
+	for i := range lines {
+		lines[i] = make([]byte, cols)
+	}
+
+	scanner := bufio.NewScanner(file)
+	i := 0
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		copy(lines[i], line)
+		i++
+	}
+
+	return lines, nil
+}
