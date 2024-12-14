@@ -159,61 +159,61 @@ func TestSolve2(t *testing.T) {
 		expected   int
 	)
 
-	// rows, cols = 5, 5
-	// grid, err = readFile("test.txt", rows, cols)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
-	// regions = walkGrid(&grid, rows, cols)
-	// res = solve2(&grid, &regions)
-	// expected = 436
-	// fmt.Printf("TEST part 2 | price: %d\n", res)
-	// if res != expected {
-	// 	log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
-	// }
-	//
-	// rows, cols = 4, 4
-	// grid, err = readFile("test1.txt", rows, cols)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
-	// regions = walkGrid(&grid, rows, cols)
-	// res = solve2(&grid, &regions)
-	// expected = 80
-	// fmt.Printf("TEST part 2 | price: %d\n", res)
-	// if res != expected {
-	// 	log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
-	// }
-	//
-	// rows, cols = 5, 5
-	// grid, err = readFile("test2.txt", rows, cols)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
-	// regions = walkGrid(&grid, rows, cols)
-	// res = solve2(&grid, &regions)
-	// expected = 236
-	// fmt.Printf("TEST part 2 | price: %d\n", res)
-	// if res != expected {
-	// 	log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
-	// }
-	//
-	// rows, cols = 6, 6
-	// grid, err = readFile("test3.txt", rows, cols)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
-	// regions = walkGrid(&grid, rows, cols)
-	// res = solve2(&grid, &regions)
-	// expected = 368
-	// fmt.Printf("TEST part 2 | price: %d\n", res)
-	// if res != expected {
-	// 	log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
-	// }
+	rows, cols = 5, 5
+	grid, err = readFile("test.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	regions = walkGrid(&grid, rows, cols)
+	res = solve2(&grid, &regions)
+	expected = 436
+	fmt.Printf("TEST part 2 | price: %d\n", res)
+	if res != expected {
+		log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
+	}
+
+	rows, cols = 4, 4
+	grid, err = readFile("test1.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	regions = walkGrid(&grid, rows, cols)
+	res = solve2(&grid, &regions)
+	expected = 80
+	fmt.Printf("TEST part 2 | price: %d\n", res)
+	if res != expected {
+		log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
+	}
+
+	rows, cols = 5, 5
+	grid, err = readFile("test2.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	regions = walkGrid(&grid, rows, cols)
+	res = solve2(&grid, &regions)
+	expected = 236
+	fmt.Printf("TEST part 2 | price: %d\n", res)
+	if res != expected {
+		log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
+	}
+
+	rows, cols = 6, 6
+	grid, err = readFile("test3.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	regions = walkGrid(&grid, rows, cols)
+	res = solve2(&grid, &regions)
+	expected = 368
+	fmt.Printf("TEST part 2 | price: %d\n", res)
+	if res != expected {
+		log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
+	}
 
 	rows, cols = 10, 10
 	grid, err = readFile("test4.txt", rows, cols)

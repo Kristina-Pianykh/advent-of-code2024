@@ -216,7 +216,6 @@ func (r *Region) calcSides(grid *Grid) {
 
 	bfs = func() {
 		fmt.Printf("toVisit: %d\n", toVisit)
-	start:
 		for len(toVisit) > 0 {
 			c := toVisit[0]
 			toVisit = remove(toVisit, c)
@@ -225,7 +224,7 @@ func (r *Region) calcSides(grid *Grid) {
 
 			if slices.Contains(visited, c) {
 				fmt.Printf("has already been visited, goto start\n")
-				goto start
+				continue
 				// return
 			}
 			visited = append(visited, c)
@@ -246,16 +245,23 @@ func (r *Region) calcSides(grid *Grid) {
 			fmt.Printf("len(outsiders) before: %d\n", len(outsiders))
 			fmt.Printf("localOutsiders: %v\n", localOutsiders)
 			for _, o := range localOutsiders {
+
+				if o.incLayoutIdx == nil {
+					log.Fatalf("incLayoutIdx is not set for %s\n", o.string())
+				}
+
 				for _, out := range outsiders {
 
-					if o == out {
-						fmt.Printf("%s : inner bouder\n", o.string())
+					if o == out && *o.incLayoutIdx != *out.incLayoutIdx {
+						fmt.Printf("%s : new inner boder\n", o.string())
 						sides++
+						// break
 						goto nextLocalOutsider
 					}
 
 					if o.isAdjacent(out) && *o.incLayoutIdx == *out.incLayoutIdx {
 						fmt.Printf("%s is adjacent to %s\n", o.string(), out.string())
+						// continue
 						goto nextLocalOutsider
 					}
 				}
