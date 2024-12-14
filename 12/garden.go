@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strings"
+	// "github.com/ymiseddy/AdventOfCode2024/shared"
 )
 
 // Optional is type wrapper for any value
@@ -37,7 +39,8 @@ type Region struct {
 
 func (r Region) string() string {
 	// return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, price=%d, len(plots)=%d, plots=%v\n", r.plotType, r.area, r.perimeter, r.price, len(r.plots), r.plots)
-	return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, sides=%d, len(plots)=%d\n", r.plotType, r.area, r.perimeter, r.sides, len(r.plots))
+	// return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, sides=%d, len(plots)=%d", r.plotType, r.area, r.perimeter, r.sides, len(r.plots))
+	return fmt.Sprintf("sides: %d area: %d runeType: %c", r.sides, r.area, r.plotType)
 }
 
 // ?? pass region by pointer? would it work otherwise?
@@ -124,27 +127,32 @@ func solve2(grid *Grid, regions *[]Region) int {
 }
 
 func main() {
-	rows, cols := 140, 140
-	grid, err := readFile("input.txt", rows, cols)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
+	grid := ReadLinesFromStream(os.Stdin)
+	rows := len(grid)
+	cols := len(grid[0])
+	// rows, cols := 10, 10
+	// grid, err := readFile("input.txt", rows, cols)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	os.Exit(1)
+	// }
 	regions := walkGrid(&grid, rows, cols)
 	// fmt.Printf("found %d regions\n", len(regions))
-
-	fmt.Printf("part 1 | price: %d\n", solve1(&grid, &regions))
+	// solve2(&grid, &regions)
+	// fmt.Printf("part 1 | price: %d\n", solve1(&grid, &regions))
 	fmt.Printf("part 2 | price: %d\n", solve2(&grid, &regions))
 	//98311 too low
+	//496471 too low
 	//860382 too high
 }
 
 func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 	if (*grid).isOffGrid(c) {
+		return nil
 		log.Fatalf("%s is off grid\n", c.string())
 	}
 
-	fmt.Printf("search neighbors for %s\n", c.string())
+	// fmt.Printf("search neighbors for %s\n", c.string())
 	incLayout := [][]int{
 		{0, -1},
 		{1, 0},
@@ -156,7 +164,7 @@ func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 		potentialNeighbor := Coordinate{x: c.x + incLayout[i][0], y: c.y + incLayout[i][1]}
 		ch, err := (*grid).getVal(potentialNeighbor)
 		if err != nil {
-			fmt.Printf("%s is off grid\n", potentialNeighbor.string())
+			// fmt.Printf("%s is off grid\n", potentialNeighbor.string())
 			continue
 		}
 		if ch == c.v {
@@ -230,7 +238,11 @@ func (r *Region) calcSides(grid *Grid) {
 			visited = append(visited, c)
 
 			neighbors := c.getNeighbors(grid)
+			if neighbors == nil {
+				continue
+			}
 			fmt.Printf("neighbors: %v\n", neighbors)
+
 			for _, neighbor := range neighbors {
 				if !slices.Contains(visited, neighbor) {
 					if !slices.Contains(toVisit, neighbor) {
@@ -244,6 +256,7 @@ func (r *Region) calcSides(grid *Grid) {
 			fmt.Printf("sides before comparison: %d\n", sides)
 			fmt.Printf("len(outsiders) before: %d\n", len(outsiders))
 			fmt.Printf("localOutsiders: %v\n", localOutsiders)
+
 			for _, o := range localOutsiders {
 
 				if o.incLayoutIdx == nil {
@@ -251,22 +264,13 @@ func (r *Region) calcSides(grid *Grid) {
 				}
 
 				for _, out := range outsiders {
-
-					if o == out && *o.incLayoutIdx != *out.incLayoutIdx {
-						fmt.Printf("%s : new inner boder\n", o.string())
-						sides++
-						// break
-						goto nextLocalOutsider
-					}
-
 					if o.isAdjacent(out) && *o.incLayoutIdx == *out.incLayoutIdx {
 						fmt.Printf("%s is adjacent to %s\n", o.string(), out.string())
-						// continue
 						goto nextLocalOutsider
 					}
 				}
+
 				sides++ // if the given local outsider is not adjacent to any found outsiders from the same side
-				outsiders = append(outsiders, o)
 			nextLocalOutsider:
 			}
 			fmt.Printf("sides after comparison: %d\n", sides)
@@ -280,6 +284,7 @@ func (r *Region) calcSides(grid *Grid) {
 	toVisit = append(toVisit, (*r).plots[0])
 	fmt.Printf("first toVisit: %d\n", toVisit)
 	bfs()
+
 	(*r).sides = sides
 }
 
@@ -353,7 +358,7 @@ func walkGrid(grid *Grid, rows, cols int) []Region {
 				regions = append(regions, region)
 			}
 			visited[y][x] = true
-			// fmt.Printf("%s\n", region.string())
+			fmt.Printf("%s\n", region.string())
 		}
 	}
 	return regions
@@ -367,25 +372,19 @@ func initVisitedGrid(rows, cols int) VisitedGrid {
 	return dir_grid
 }
 
-func readFile(file_path string, rows, cols int) (Grid, error) {
-	file, err := os.Open(file_path)
-	if err != nil {
-		return nil, errors.New("Error opening file")
-	}
-	defer file.Close()
-
-	lines := make([][]byte, rows)
-	for i := range lines {
-		lines[i] = make([]byte, cols)
-	}
-
+func ReadLinesFromStream(file *os.File) Grid {
 	scanner := bufio.NewScanner(file)
-	i := 0
+	var lines []string
 	for scanner.Scan() {
-		line := scanner.Bytes()
-		copy(lines[i], line)
-		i++
+		line := scanner.Text()
+		lines = append(lines, line)
 	}
 
-	return lines, nil
+	var byteArr [][]byte
+	for y := 0; y < len(lines); y++ {
+		// trim line
+		lines[y] = strings.TrimSpace(lines[y])
+		byteArr = append(byteArr, []byte(lines[y]))
+	}
+	return byteArr
 }

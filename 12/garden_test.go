@@ -228,4 +228,14 @@ func TestSolve2(t *testing.T) {
 	if res != expected {
 		log.Fatalf("Test failed with res %d; expected: %d\n", res, expected)
 	}
+
+	rows, cols = 57, 21
+	grid, err = readFile("test5_replace.txt", rows, cols)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	regions = walkGrid(&grid, rows, cols)
+	res = solve2(&grid, &regions)
+	fmt.Printf("TEST part 2 | price: %d\n", res)
 }
