@@ -8,14 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
-	// "github.com/ymiseddy/AdventOfCode2024/shared"
 )
-
-// Optional is type wrapper for any value
-type Optional[T any] struct {
-	value T
-	some  bool
-}
 
 type Coordinate struct {
 	x            int
@@ -38,17 +31,13 @@ type Region struct {
 }
 
 func (r Region) string() string {
-	// return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, price=%d, len(plots)=%d, plots=%v\n", r.plotType, r.area, r.perimeter, r.price, len(r.plots), r.plots)
-	// return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, sides=%d, len(plots)=%d", r.plotType, r.area, r.perimeter, r.sides, len(r.plots))
-	return fmt.Sprintf("sides: %d area: %d runeType: %c", r.sides, r.area, r.plotType)
+	return fmt.Sprintf("plotType=%c, area=%d, perimeter=%d, sides=%d, len(plots)=%d", r.plotType, r.area, r.perimeter, r.sides, len(r.plots))
 }
 
-// ?? pass region by pointer? would it work otherwise?
 func (r *Region) calcArea() {
 	(*r).area = len((*r).plots)
 }
 
-// ?? pass region by pointer? would it work otherwise?
 func (r *Region) calcPerimeter(grid *Grid) {
 	acc := 0
 	incLayout := [][]int{
@@ -58,7 +47,6 @@ func (r *Region) calcPerimeter(grid *Grid) {
 		{-1, 0},
 	}
 	for _, c := range (*r).plots {
-		// fmt.Printf("%s\n", c.string())
 		for j := 0; j < 4; j++ {
 			x := c.x + incLayout[j][0]
 			y := c.y + incLayout[j][1]
@@ -67,11 +55,9 @@ func (r *Region) calcPerimeter(grid *Grid) {
 			if err == nil {
 				if ch != (*r).plotType {
 					acc++
-					// fmt.Printf("inc perimeter for %c at (%d, %d); acc=%d\n", c.v, x, y, acc)
 				}
 			} else {
 				acc++
-				// fmt.Printf("out of bounds for (%d, %d); acc=%d\n", x, y, acc)
 			}
 
 		}
@@ -105,10 +91,8 @@ func (g *Grid) getVal(c Coordinate) (byte, error) {
 func solve1(grid *Grid, regions *[]Region) int {
 	acc := 0
 	for _, r := range *regions {
-		// fmt.Printf("region %c has %d plots\n", r.plotType, len(r.plots))
 		r.calcArea()
 		r.calcPerimeter(grid)
-		// fmt.Printf("%s\n", r.string())
 		acc += r.area * r.perimeter
 	}
 	return acc
@@ -117,7 +101,6 @@ func solve1(grid *Grid, regions *[]Region) int {
 func solve2(grid *Grid, regions *[]Region) int {
 	acc := 0
 	for _, r := range *regions {
-		// fmt.Printf("region %c has %d plots\n", r.plotType, len(r.plots))
 		r.calcArea()
 		r.calcSides(grid)
 		fmt.Printf("%s\n", r.string())
@@ -127,32 +110,19 @@ func solve2(grid *Grid, regions *[]Region) int {
 }
 
 func main() {
-	grid := ReadLinesFromStream(os.Stdin)
+	grid := readLinesFromStream(os.Stdin)
 	rows := len(grid)
 	cols := len(grid[0])
-	// rows, cols := 10, 10
-	// grid, err := readFile("input.txt", rows, cols)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	os.Exit(1)
-	// }
 	regions := walkGrid(&grid, rows, cols)
-	// fmt.Printf("found %d regions\n", len(regions))
-	// solve2(&grid, &regions)
-	// fmt.Printf("part 1 | price: %d\n", solve1(&grid, &regions))
+	fmt.Printf("part 1 | price: %d\n", solve1(&grid, &regions))
 	fmt.Printf("part 2 | price: %d\n", solve2(&grid, &regions))
-	//98311 too low
-	//496471 too low
-	//860382 too high
 }
 
 func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 	if (*grid).isOffGrid(c) {
-		return nil
 		log.Fatalf("%s is off grid\n", c.string())
 	}
 
-	// fmt.Printf("search neighbors for %s\n", c.string())
 	incLayout := [][]int{
 		{0, -1},
 		{1, 0},
@@ -164,7 +134,6 @@ func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 		potentialNeighbor := Coordinate{x: c.x + incLayout[i][0], y: c.y + incLayout[i][1]}
 		ch, err := (*grid).getVal(potentialNeighbor)
 		if err != nil {
-			// fmt.Printf("%s is off grid\n", potentialNeighbor.string())
 			continue
 		}
 		if ch == c.v {
@@ -223,26 +192,16 @@ func (r *Region) calcSides(grid *Grid) {
 	var bfs func()
 
 	bfs = func() {
-		fmt.Printf("toVisit: %d\n", toVisit)
 		for len(toVisit) > 0 {
 			c := toVisit[0]
 			toVisit = remove(toVisit, c)
 
-			fmt.Printf("current node: %s\n", c.string())
-
 			if slices.Contains(visited, c) {
-				fmt.Printf("has already been visited, goto start\n")
 				continue
-				// return
 			}
 			visited = append(visited, c)
 
 			neighbors := c.getNeighbors(grid)
-			if neighbors == nil {
-				continue
-			}
-			fmt.Printf("neighbors: %v\n", neighbors)
-
 			for _, neighbor := range neighbors {
 				if !slices.Contains(visited, neighbor) {
 					if !slices.Contains(toVisit, neighbor) {
@@ -250,22 +209,15 @@ func (r *Region) calcSides(grid *Grid) {
 					}
 				}
 			}
-			fmt.Printf("toVisit: %d\n", toVisit)
 
 			localOutsiders := c.getOutsiders(grid)
-			fmt.Printf("sides before comparison: %d\n", sides)
-			fmt.Printf("len(outsiders) before: %d\n", len(outsiders))
-			fmt.Printf("localOutsiders: %v\n", localOutsiders)
 
 			for _, o := range localOutsiders {
-
 				if o.incLayoutIdx == nil {
 					log.Fatalf("incLayoutIdx is not set for %s\n", o.string())
 				}
-
 				for _, out := range outsiders {
 					if o.isAdjacent(out) && *o.incLayoutIdx == *out.incLayoutIdx {
-						fmt.Printf("%s is adjacent to %s\n", o.string(), out.string())
 						goto nextLocalOutsider
 					}
 				}
@@ -273,18 +225,14 @@ func (r *Region) calcSides(grid *Grid) {
 				sides++ // if the given local outsider is not adjacent to any found outsiders from the same side
 			nextLocalOutsider:
 			}
-			fmt.Printf("sides after comparison: %d\n", sides)
 
 			// merge outsiders with localOutsiders but avoid duplicates
 			outsiders = addDistinct(outsiders, localOutsiders)
-			fmt.Printf("len(outsiders) after: %d\n\n", len(outsiders))
 		}
 	}
 
 	toVisit = append(toVisit, (*r).plots[0])
-	fmt.Printf("first toVisit: %d\n", toVisit)
 	bfs()
-
 	(*r).sides = sides
 }
 
@@ -301,15 +249,11 @@ func remove(arr []Coordinate, toRemove Coordinate) []Coordinate {
 	if len(arr) == 0 {
 		return arr
 	}
-
-	// might potentially cause trouble
-	// might make sense to return a copy?
 	if !slices.Contains(arr, toRemove) {
 		return arr
 	}
 
 	var new_arr []Coordinate = make([]Coordinate, len(arr)-1)
-
 	idx := 0
 	for _, c := range arr {
 		if c == toRemove {
@@ -372,7 +316,7 @@ func initVisitedGrid(rows, cols int) VisitedGrid {
 	return dir_grid
 }
 
-func ReadLinesFromStream(file *os.File) Grid {
+func readLinesFromStream(file *os.File) Grid {
 	scanner := bufio.NewScanner(file)
 	var lines []string
 	for scanner.Scan() {
@@ -382,7 +326,6 @@ func ReadLinesFromStream(file *os.File) Grid {
 
 	var byteArr [][]byte
 	for y := 0; y < len(lines); y++ {
-		// trim line
 		lines[y] = strings.TrimSpace(lines[y])
 		byteArr = append(byteArr, []byte(lines[y]))
 	}
