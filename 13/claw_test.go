@@ -12,26 +12,25 @@ func TestGcdAndLcm(t *testing.T) {
 	b = 86
 	g = gcd(a, b)
 	fmt.Printf("gcd(%d, %d)=%d\n", a, b, g)
-	fmt.Printf("lcm(%d, %d, %d)=%d\n", a, b, g, lcm(a, b, g))
+	fmt.Printf("lcm(%d, %d)=%d\n", a, b, lcm(a, b))
 
 	a = 94
 	b = 34
 	g = gcd(a, b)
 	fmt.Printf("gcd(%d, %d)=%d\n", a, b, g)
-	fmt.Printf("lcm(%d, %d, %d)=%d\n", a, b, g, lcm(a, b, g))
+	fmt.Printf("lcm(%d, %d)=%d\n", a, b, lcm(a, b))
 
 	a = 26
 	b = 66
 	g = gcd(a, b)
 	fmt.Printf("gcd(%d, %d)=%d\n", a, b, g)
-	fmt.Printf("lcm(%d, %d, %d)=%d\n", a, b, g, lcm(a, b, g))
+	fmt.Printf("lcm(%d, %d)=%d\n", a, b, lcm(a, b))
 }
 
 func TestGetButtonCoordinates(t *testing.T) {
 	lines := []string{
 		"Button A: X+94, Y+34",
 		"Button B: X+22, Y+67",
-		// "Prize: X=8400, Y=5400",
 	}
 	x := 0
 	y := 0
