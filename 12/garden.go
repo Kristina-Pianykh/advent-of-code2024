@@ -8,12 +8,13 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 )
 
 type Coordinate struct {
 	x            int
 	y            int
-	v            byte
+	v            rune
 	incLayoutIdx *int
 }
 
@@ -23,7 +24,7 @@ func (c Coordinate) string() string {
 
 type Region struct {
 	plots     []Coordinate
-	plotType  byte
+	plotType  rune
 	area      int
 	perimeter int
 	sides     int
@@ -69,7 +70,7 @@ func (r *Region) calcPrice() {
 	(*r).price = (*r).area * (*r).perimeter
 }
 
-type Grid [][]byte
+type Grid [][]rune
 type VisitedGrid [][]bool
 
 func (g *Grid) isOffGrid(c Coordinate) bool {
@@ -81,7 +82,7 @@ func (g *Grid) isOffGrid(c Coordinate) bool {
 	return false
 }
 
-func (g *Grid) getVal(c Coordinate) (byte, error) {
+func (g *Grid) getVal(c Coordinate) (rune, error) {
 	if (*g).isOffGrid(c) {
 		return 0, errors.New(fmt.Sprintf("%v is off grid\n", c))
 	}
@@ -103,7 +104,7 @@ func solve2(grid *Grid, regions *[]Region) int {
 	for _, r := range *regions {
 		r.calcArea()
 		r.calcSides(grid)
-		fmt.Printf("%s\n", r.string())
+		// fmt.Printf("%s\n", r.string())
 		acc += r.area * r.sides
 	}
 	return acc
@@ -265,10 +266,47 @@ func remove(arr []Coordinate, toRemove Coordinate) []Coordinate {
 	return new_arr
 }
 
+var UPPERBOUND int = 0
+
+func printGrid(grid *[][]string, c Coordinate) {
+	fmt.Print("\033[H\033[2J")
+	padding := 2
+	marginY := 60
+
+	if c.y >= UPPERBOUND/2 && UPPERBOUND <= len(*grid)-marginY {
+		UPPERBOUND = min(UPPERBOUND/2, len(*grid)-marginY)
+	}
+	lowerBound := min(UPPERBOUND+marginY, len(*grid))
+
+	var sb strings.Builder
+	for y, _ := range (*grid)[UPPERBOUND:lowerBound] {
+		for x, v := range (*grid)[UPPERBOUND:lowerBound][y] {
+
+			if []byte(v)[0] >= 65 && []byte(v)[0] <= 90 {
+				(*grid)[UPPERBOUND:lowerBound][y][x] = fmt.Sprintf("%-*s", padding, string((*grid)[UPPERBOUND:lowerBound][y][x]))
+			}
+			sb.WriteString((*grid)[UPPERBOUND:lowerBound][y][x])
+		}
+		sb.WriteString("\n")
+	}
+	fmt.Println(sb.String())
+	time.Sleep(10 * time.Millisecond)
+}
+
 func walkGrid(grid *Grid, rows, cols int) []Region {
+	var outputGrid [][]string = make([][]string, rows)
+	for y, _ := range outputGrid {
+		outputGrid[y] = make([]string, cols)
+		for x, _ := range (*grid)[y] {
+			outputGrid[y][x] = string((*grid)[y][x])
+		}
+	}
+
 	visited := initVisitedGrid(rows, cols)
 	regions := []Region{}
 	var region Region
+	emojis := []string{"🎄", "💥", "😈", "🚀", "🍌", "👽", "💖", "🌶️", "🥶", "🍑", "💩", "🎅", "🎮", "🐸", "🌈", "🍆", "🦀", "👾", "🍺", "🍁"}
+	emojiIdx := 0
 
 	var findRegion func(grid *Grid, c Coordinate, region *Region)
 	findRegion = func(grid *Grid, c Coordinate, region *Region) {
@@ -285,8 +323,11 @@ func walkGrid(grid *Grid, rows, cols int) []Region {
 			return
 		}
 
+		outputGrid[c.y][c.x] = emojis[emojiIdx]
+		printGrid(&outputGrid, c)
 		visited[c.y][c.x] = true
 		c.v = cell
+
 		region.plots = append(region.plots, c)
 		findRegion(grid, Coordinate{x: c.x, y: c.y - 1}, region) // up
 		findRegion(grid, Coordinate{x: c.x + 1, y: c.y}, region) // right
@@ -299,10 +340,12 @@ func walkGrid(grid *Grid, rows, cols int) []Region {
 			if !visited[y][x] {
 				region = Region{plots: []Coordinate{}, plotType: cell}
 				findRegion(grid, Coordinate{x: x, y: y, v: cell}, &region)
+
 				regions = append(regions, region)
+				emojiIdx = (emojiIdx + 1) % len(emojis)
 			}
 			visited[y][x] = true
-			fmt.Printf("%s\n", region.string())
+			// fmt.Printf("%s\n", region.string())
 		}
 	}
 	return regions
@@ -324,10 +367,10 @@ func readLinesFromStream(file *os.File) Grid {
 		lines = append(lines, line)
 	}
 
-	var byteArr [][]byte
+	var byteArr [][]rune
 	for y := 0; y < len(lines); y++ {
 		lines[y] = strings.TrimSpace(lines[y])
-		byteArr = append(byteArr, []byte(lines[y]))
+		byteArr = append(byteArr, []rune(lines[y]))
 	}
 	return byteArr
 }
