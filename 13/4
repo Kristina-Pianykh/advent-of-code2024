@@ -1,0 +1,96 @@
+package main
+
+import (
+	"bufio"
+	"log"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+func main() {
+	var (
+		scanner                                                *bufio.Scanner = bufio.NewScanner(os.Stdin)
+		aXCoef, aYCoef, bXCoef, bYCoef, prizeX, prizeY, tokens int
+	)
+	tokens = 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case strings.HasPrefix(string(line), "Button A"):
+			aX, aY := extractCoordinates(line)
+		case strings.HasPrefix(string(line), "Button B"):
+			bX, bY := extractCoordinates(line)
+		case strings.HasPrefix(string(line), "Prize"):
+			prizeX, prizeY := extractCoordinates(line)
+		default:
+			continue
+		}
+		tokens += solveEquation(aXCoef, aYCoef, bXCoef, bYCoef, prizeX, prizeY)
+	}
+}
+
+func extractCoordinates(line string) (int, int) {
+	var err error
+	var xInt, yInt int
+
+	re := regexp.MustCompile(`X\+([[:digit:]]+), Y\+([[:digit:]]+)`)
+	x, y := re.FindStringSubmatch(line)[0], re.FindStringSubmatch(line)[1]
+	xInt, err = strconv.Atoi(x)
+	if err != nil {
+		log.Fatalf("failed to convert to int: %s\n", x)
+	}
+	yInt, err = strconv.Atoi(y)
+	if err != nil {
+		log.Fatalf("failed to convert to int: %s\n", y)
+	}
+	return xInt, yInt
+}
+
+// returns 0 on non-solvable
+func solveEquation(aXCoef, aYCoef, bXCoef, bYCoef, prizeX, prizeY int) (int, int) {
+	var a, b int = 0, 0
+
+	// aXCoef*a + bXCoef*b = prizeX
+	// aYCoef*a + bYCoef*b = prizeY
+
+	lcmV := lcm(aXCoef, aYCoef, gcd(aXCoef, aYCoef))
+	multiplierX := lcmV / aXCoef
+	multiplierY := lcmV / aYCoef
+
+	// aYCoef*a*multiplierY + bYCoef*b*multiplierY = prizeY * multiplierY
+
+	if aXCoef*multiplierX-aYCoef*multiplierY != 0 {
+		log.Fatal("something went wrong")
+	}
+
+	// bXCoef*b*multiplierX - bYCoef*b*multiplierY = prizeX*multiplierX - prizeY*multiplierY
+	// b(bXCoef*multiplierX - bYCoef*multiplierY) = prizeX*multiplierX - prizeY*multiplierY
+	// b * Z = prizeX*multiplierX - prizeY*multiplierY
+	// b = (prizeX*multiplierX - prizeY*multiplierY) / Z
+	// b = (prizeX*multiplierX - prizeY*multiplierY) / (bXCoef*multiplierX - bYCoef*multiplierY)
+
+	bF := (float64(prizeX)*float64(multiplierX) - float64(prizeY)*float64(multiplierY)) / (float64(bXCoef)*float64(multiplierX) - float64(bYCoef)*float64(multiplierY))
+	if bF/float64(int(bF)) > 0 {
+		return 0
+	}
+
+	return int(bF)
+}
+
+func gcd(a, b int) int {
+	for a != b {
+		if a > b {
+			a = a - b
+		} else {
+			b = b - a
+		}
+	}
+	return a
+}
+
+func lcm(a, b, gcd int) int {
+	return a * (b / gcd)
+}
