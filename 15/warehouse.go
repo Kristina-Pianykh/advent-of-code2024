@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Coordinate struct {
@@ -25,55 +24,18 @@ type Warehouse struct {
 
 func main() {
 	w := readLinesFromStream(os.Stdin)
-
-	filename := fmt.Sprintf("00.txt")
-	f, err := os.Create(filename)
-	if err != nil {
-		panic(err)
-	}
-	writer := bufio.NewWriter(f)
-	fmt.Fprintf(writer, "start\n\n")
-
-	for y, row := range *w.grid {
-		fmt.Fprintf(writer, "%s", string(row))
-		if y < len(*w.grid) {
-			fmt.Fprintln(writer)
-		}
-	}
-	writer.Flush()
-
-	for i, move := range *w.moves {
-		w.update(move)
-		// w.write(move, i)
-
-		filename := fmt.Sprintf("%d.txt", i)
-		f, err := os.Create(filename)
-		if err != nil {
-			panic(err)
-		}
-
-		writer := bufio.NewWriter(f)
-		// fmt.Fprintf(writer, fmt.Sprintf("next move: %s, idx: %d\n", string((*w.moves)[i+1]), i+1))
-		fmt.Fprintf(writer, fmt.Sprintf("current pos: %s\n", w.robotPos.string()))
-		for y, row := range *w.grid {
-			fmt.Fprintf(writer, "%s", string(row))
-			if y < len(*w.grid) {
-				fmt.Fprintln(writer)
-			}
-		}
-		writer.Flush()
-	}
-	// size := len(*grid)
 	for y := range *w.grid {
 		for _, cell := range (*w.grid)[y] {
 			fmt.Printf("%c", cell)
 		}
 		fmt.Println()
 	}
-	// 948943 too low
-	// 1501299 too low
-	// 1501577 too low
-	// 1501192 not right
+
+	w.write(00)
+	for _, move := range *w.moves {
+		w.update(move)
+		// w.write(i)
+	}
 	fmt.Printf("res: %d\n", w.calcGps())
 	// fmt.Printf("%s\n", string(*moves))
 	// fmt.Printf("num of moves: %d\n", len(*moves))
@@ -83,13 +45,13 @@ func main() {
 func (w *Warehouse) canPush(move byte) (int, bool) {
 	switch move {
 	case '<':
-		if (*w.grid)[w.robotPos.y][w.robotPos.x-1] == 'O' {
+		if (*w.grid)[w.robotPos.y][w.robotPos.x-1] == ']' {
 			i := 1
 			for {
-				if (*w.grid)[w.robotPos.y][w.robotPos.x-i] == '#' {
+				if (*w.grid)[w.robotPos.y][(w.robotPos.x-i)*2] == '#' {
 					return 0, false
 				}
-				if (*w.grid)[w.robotPos.y][w.robotPos.x-i] == '.' {
+				if (*w.grid)[w.robotPos.y][(w.robotPos.x-i)*2] == '.' {
 					i--
 					break
 				}
@@ -98,13 +60,13 @@ func (w *Warehouse) canPush(move byte) (int, bool) {
 			return i, true
 		}
 	case '>':
-		if (*w.grid)[w.robotPos.y][w.robotPos.x+1] == 'O' {
+		if (*w.grid)[w.robotPos.y][(w.robotPos.x+1)*2] == '[' {
 			i := 1
 			for {
-				if (*w.grid)[w.robotPos.y][w.robotPos.x+i] == '#' {
+				if (*w.grid)[w.robotPos.y][(w.robotPos.x+i)*2] == '#' {
 					return 0, false
 				}
-				if (*w.grid)[w.robotPos.y][w.robotPos.x+i] == '.' {
+				if (*w.grid)[w.robotPos.y][(w.robotPos.x+i)*2] == '.' {
 					i--
 					break
 				}
@@ -113,7 +75,7 @@ func (w *Warehouse) canPush(move byte) (int, bool) {
 			return i, true
 		}
 	case '^':
-		if (*w.grid)[w.robotPos.y-1][w.robotPos.x] == 'O' {
+		if (*w.grid)[w.robotPos.y-1][w.robotPos.x] == ']' || (*w.grid)[w.robotPos.y-1][w.robotPos.x] == '[' {
 			i := 1
 			for {
 				if (*w.grid)[w.robotPos.y-i][w.robotPos.x] == '#' {
@@ -128,7 +90,7 @@ func (w *Warehouse) canPush(move byte) (int, bool) {
 			return i, true
 		}
 	case 'v':
-		if (*w.grid)[w.robotPos.y+1][w.robotPos.x] == 'O' {
+		if (*w.grid)[w.robotPos.y+1][w.robotPos.x] == ']' || (*w.grid)[w.robotPos.y+1][w.robotPos.x] == '[' {
 			i := 1
 			for {
 				if (*w.grid)[w.robotPos.y+i][w.robotPos.x] == '#' {
@@ -183,7 +145,11 @@ func (w *Warehouse) update(move byte) {
 		}
 
 		if crateN, ok := w.canPush(move); ok {
-			(*w.grid)[w.robotPos.y][w.robotPos.x-crateN-1] = 'O'
+			// ..[]@
+			// .[]@.
+			(*w.grid)[w.robotPos.y][w.robotPos.x-crateN*2-1] = '['
+			(*w.grid)[w.robotPos.y][w.robotPos.x-crateN*2] = ']'
+			// (*w.grid)[w.robotPos.y][w.robotPos.x-crateN-1] = 'O'
 			w.updateRobotPos(-1, 0)
 		}
 
@@ -198,7 +164,11 @@ func (w *Warehouse) update(move byte) {
 		}
 
 		if crateN, ok := w.canPush(move); ok {
-			(*w.grid)[w.robotPos.y][w.robotPos.x+crateN+1] = 'O'
+			// .@[].
+			// ..@[]
+			(*w.grid)[w.robotPos.y][w.robotPos.x+crateN*2] = '['
+			(*w.grid)[w.robotPos.y][w.robotPos.x+crateN*2+1] = ']'
+			// (*w.grid)[w.robotPos.y][w.robotPos.x+crateN+1] = 'O'
 			w.updateRobotPos(1, 0)
 		}
 
@@ -255,8 +225,23 @@ func parseForGrid(line string, lineIdx int, grid *Grid) {
 		// if ch == '\n' {
 		// 	continue
 		// }
-		fmt.Printf("i=%d, ch=%c\n", i, ch)
-		(*grid)[lineIdx][i] = byte(ch)
+		// fmt.Printf("i=%d, ch=%c\n", i, ch)
+		switch ch {
+		case '#':
+			(*grid)[lineIdx][i*2] = '#'
+			(*grid)[lineIdx][i*2+1] = '#'
+		case 'O':
+			(*grid)[lineIdx][i*2] = '['
+			(*grid)[lineIdx][i*2+1] = ']'
+		case '@':
+			(*grid)[lineIdx][i*2] = '@'
+			(*grid)[lineIdx][i*2+1] = '.'
+		case '.':
+			(*grid)[lineIdx][i*2] = '.'
+			(*grid)[lineIdx][i*2+1] = '.'
+		default:
+			panic(fmt.Sprintf("unrecognized character: %c\n", ch))
+		}
 	}
 }
 
@@ -266,40 +251,39 @@ func parseForMoves(line string, lineIdx int, grid *Grid) {
 	}
 }
 
-func (w *Warehouse) write(move byte, moveIdx int) {
-	var err error
-	var f *os.File
-	var sb strings.Builder
-
-	f, err = os.Create(fmt.Sprintf("%d.txt", moveIdx))
+func (w *Warehouse) write(moveIdx int) {
+	filename := fmt.Sprintf("%d.txt", moveIdx)
+	f, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
 
-	sb.WriteString(fmt.Sprintf("move: %s, idx: %d\n", string(move), moveIdx))
-	sb.WriteString(fmt.Sprintf("next pos: %s\n", w.robotPos.string()))
-	for y, _ := range *w.grid {
-		// fmt.Printf("%s\n", row)
-		sb.WriteString(string((*w.grid)[y]))
-		if y != len(*w.grid)-1 {
-			sb.WriteString("\n")
+	writer := bufio.NewWriter(f)
+	// fmt.Fprintf(writer, fmt.Sprintf("next move: %s, idx: %d\n", string((*w.moves)[i+1]), i+1))
+	fmt.Fprintf(writer, fmt.Sprintf("current pos: %s\n", w.robotPos.string()))
+	for y, row := range *w.grid {
+		fmt.Fprintf(writer, "%s", string(row))
+		if y < len(*w.grid) {
+			fmt.Fprintln(writer)
 		}
 	}
-	f.WriteString(sb.String())
+	writer.Flush()
 }
 
 func readLinesFromStream(file *os.File) *Warehouse {
 	scanner := bufio.NewScanner(file)
 	// rows, cols := 8, 8
+	rows, cols := 7, 7
 	// rows, cols := 10, 10
-	rows, cols := 50, 50
+	// rows, cols := 50, 50
 
 	var robotPos Coordinate
 	var grid Grid = make([][]byte, rows)
 	for i := range grid {
-		grid[i] = make([]byte, cols)
+		grid[i] = make([]byte, cols*2)
 	}
+	//  0   1   2   3
+	// 0 1 2 3 4 5 6 7
 	readGrid := false
 	moves := []byte{}
 
