@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
+	"sort"
 )
 
 type Coordinate struct {
@@ -13,8 +15,14 @@ type Coordinate struct {
 }
 
 func (c Coordinate) string() string {
-	return fmt.Sprintf("x: %d, y: %d", c.x, c.y)
+	return fmt.Sprintf("x: %d, y: %d, v: %c", c.x, c.y, c.v)
 }
+
+type ByY []Coordinate
+
+func (a ByY) Len() int           { return len(a) }
+func (a ByY) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByY) Less(i, j int) bool { return a[i].y < a[j].y }
 
 type Grid [][]byte
 type Warehouse struct {
@@ -24,29 +32,26 @@ type Warehouse struct {
 }
 
 func main() {
-	w := readLinesFromStream(os.Stdin)
-	for y := range *w.grid {
-		for _, cell := range (*w.grid)[y] {
-			fmt.Printf("%c", cell)
-		}
-		fmt.Println()
-	}
-	fmt.Printf("robot start pos: %s\n", w.robotPos.string())
+	lines := readLinesFromStream(os.Stdin)
+	grid, robotPos := parseGrid(lines)
+	w := Warehouse{grid: grid, robotPos: robotPos, moves: parseMoves(lines)}
 
-	w.write("00", (*w.moves)[0])
+	// for y := range *w.grid {
+	// 	for _, cell := range (*w.grid)[y] {
+	// 		fmt.Printf("%c", cell)
+	// 	}
+	// 	fmt.Println()
+	// }
 	for i, move := range *w.moves {
-		w.update(move)
-		if i == len(*w.moves)-1 {
-			w.write(fmt.Sprintf("%d", i), '0')
-		} else {
-			w.write(fmt.Sprintf("%d", i), (*w.moves)[i+1])
-		}
-		fmt.Printf("updated robot position: %s\n", w.robotPos.string())
+		w.update(i, move)
+		w.write(fmt.Sprintf("%d", i))
+		// if i == len(*w.moves)-1 {
+		// 	w.write(fmt.Sprintf("%d", i), '0')
+		// } else {
+		// 	w.write(fmt.Sprintf("%d", i), (*w.moves)[i+1])
+		// }
 	}
-	// 1579161 too low
 	fmt.Printf("res: %d\n", w.calcGps2())
-	// fmt.Printf("%s\n", string(*moves))
-	// fmt.Printf("num of moves: %d\n", len(*moves))
 }
 
 func (w *Warehouse) canPushHorizontally(move byte) (int, bool) {
@@ -93,29 +98,37 @@ func (w *Warehouse) canPushVertically(move byte) ([]Coordinate, bool) {
 
 	collectNodes = func(c Coordinate, move byte) bool {
 		c.v = (*w.grid)[c.y][c.x]
-		fmt.Printf("c: %s\n", c.string())
+		// fmt.Printf("c: %s\n", c.string())
 		switch c.v {
 		case '.':
 			return true
 		case '#':
 			return false
 		case ']':
-			nodes = append(nodes, c)
+			if !slices.Contains(nodes, c) {
+				nodes = append(nodes, c)
+			}
 			closing := Coordinate{x: c.x - 1, y: c.y, v: '['}
-			nodes = append(nodes, closing)
+			if !slices.Contains(nodes, closing) {
+				nodes = append(nodes, closing)
+			}
 			if move == '^' {
 				return collectNodes(Coordinate{x: c.x, y: c.y - 1}, '^') && collectNodes(Coordinate{x: c.x - 1, y: c.y - 1}, '^')
 			} else if move == 'v' {
 				return collectNodes(Coordinate{x: c.x, y: c.y + 1}, 'v') && collectNodes(Coordinate{x: c.x - 1, y: c.y + 1}, 'v')
 			}
 		case '[':
-			nodes = append(nodes, c)
+			if !slices.Contains(nodes, c) {
+				nodes = append(nodes, c)
+			}
 			closing := Coordinate{x: c.x + 1, y: c.y, v: ']'}
-			nodes = append(nodes, closing)
+			if !slices.Contains(nodes, closing) {
+				nodes = append(nodes, closing)
+			}
 			if move == '^' {
 				return collectNodes(Coordinate{x: c.x, y: c.y - 1}, '^') && collectNodes(Coordinate{x: c.x + 1, y: c.y - 1}, '^')
 			} else if move == 'v' {
-				fmt.Printf("continue with going v\n")
+				// fmt.Printf("continue with going v\n")
 				return collectNodes(Coordinate{x: c.x, y: c.y + 1}, 'v') && collectNodes(Coordinate{x: c.x + 1, y: c.y + 1}, 'v')
 			}
 		default:
@@ -127,17 +140,12 @@ func (w *Warehouse) canPushVertically(move byte) ([]Coordinate, bool) {
 	switch move {
 	case '^':
 		if collectNodes(Coordinate{x: w.robotPos.x, y: w.robotPos.y - 1}, '^') {
-			for _, n := range nodes {
-				fmt.Printf("%s\n", n.string())
-			}
+			sort.Sort(ByY(nodes))
 			return nodes, true
 		}
 	case 'v':
-		fmt.Printf("going v\n")
 		if collectNodes(Coordinate{x: w.robotPos.x, y: w.robotPos.y + 1}, 'v') {
-			for _, n := range nodes {
-				fmt.Printf("%s\n", n.string())
-			}
+			sort.Sort(ByY(nodes))
 			return nodes, true
 		}
 	default:
@@ -160,7 +168,6 @@ func (w *Warehouse) calcGps2() int {
 			if cell == '[' {
 				// acc += 100*(len(*w.grid)-y-1) + x
 				acc += 100*y + x
-				// fmt.Printf("O at x=%d, y=%d, their value: %d\n", x, y, 100*(len(*w.grid)-y-1)+x)
 			}
 		}
 	}
@@ -174,14 +181,13 @@ func (w *Warehouse) calcGps1() int {
 			if cell == 'O' {
 				// acc += 100*(len(*w.grid)-y-1) + x
 				acc += 100*y + x
-				fmt.Printf("O at x=%d, y=%d, their value: %d\n", x, y, 100*(len(*w.grid)-y-1)+x)
 			}
 		}
 	}
 	return acc
 }
 
-func (w *Warehouse) update(move byte) {
+func (w *Warehouse) update(moveIdx int, move byte) {
 	switch move {
 	case '<':
 		// can't walk if next to obstacle
@@ -195,9 +201,6 @@ func (w *Warehouse) update(move byte) {
 		}
 
 		if crateN, ok := w.canPushHorizontally(move); ok {
-			fmt.Printf("crateN: %d\n", crateN)
-			// ..[]@
-			// .[]@.
 			for j := crateN; j > 0; j-- {
 				(*w.grid)[w.robotPos.y][w.robotPos.x-j*2-1] = '['
 				(*w.grid)[w.robotPos.y][w.robotPos.x-j*2] = ']'
@@ -217,8 +220,6 @@ func (w *Warehouse) update(move byte) {
 		}
 
 		if crateN, ok := w.canPushHorizontally(move); ok {
-			// .@[].
-			// ..@[]
 
 			for j := crateN; j > 0; j-- {
 				(*w.grid)[w.robotPos.y][w.robotPos.x+j*2+1] = ']'
@@ -240,13 +241,14 @@ func (w *Warehouse) update(move byte) {
 
 		if nodes, ok := w.canPushVertically(move); ok {
 			// fmt.Printf("%d\n", len(nodes))
-			for j := len(nodes) - 1; j >= 0; j-- {
-				fmt.Println("we are here")
-				fmt.Printf("shifting cell: %s\n", nodes[j].string())
+			for j := 0; j < len(nodes); j++ {
+				// fmt.Printf("shifting cell: %s\n", nodes[j].string())
 				x := nodes[j].x
 				y := nodes[j].y
 				(*w.grid)[y-1][x] = nodes[j].v
 				(*w.grid)[y][x] = '.'
+				// fmt.Printf("x=%d, y=%d, (*w.grid)[y-1][x]: %c\n", x, y, (*w.grid)[y-1][x])
+				// fmt.Printf("x=%d, y=%d, (*w.grid)[y][x]: %c\n\n", x, y, (*w.grid)[y][x])
 			}
 			w.updateRobotPos(0, -1)
 		}
@@ -274,99 +276,83 @@ func (w *Warehouse) update(move byte) {
 	}
 }
 
-func parseForGrid(line string, lineIdx int, grid *Grid) {
-	for i, ch := range line {
-		// if ch == '\n' {
-		// 	continue
-		// }
-		// fmt.Printf("i=%d, ch=%c\n", i, ch)
-		switch ch {
-		case '#':
-			(*grid)[lineIdx][i*2] = '#'
-			(*grid)[lineIdx][i*2+1] = '#'
-		case 'O':
-			(*grid)[lineIdx][i*2] = '['
-			(*grid)[lineIdx][i*2+1] = ']'
-		case '@':
-			(*grid)[lineIdx][i*2] = '@'
-			(*grid)[lineIdx][i*2+1] = '.'
-		case '.':
-			(*grid)[lineIdx][i*2] = '.'
-			(*grid)[lineIdx][i*2+1] = '.'
-		default:
-			panic(fmt.Sprintf("unrecognized character: %c\n", ch))
+func parseGrid(lines []string) (*Grid, Coordinate) {
+	var robotPos Coordinate
+	var grid Grid = [][]byte{}
+
+	for y, line := range lines {
+		if len(line) == 0 {
+			break
+		}
+		row := []byte{}
+		for i, ch := range lines[y] {
+			switch ch {
+			case '#':
+				row = append(row, []byte("##")...)
+			case 'O':
+				row = append(row, []byte("[]")...)
+			case '@':
+				row = append(row, []byte("@.")...)
+				robotPos = Coordinate{x: i * 2, y: y}
+			case '.':
+				row = append(row, []byte("..")...)
+			default:
+				panic(fmt.Sprintf("unrecognized character: %c\n", ch))
+			}
+		}
+		// fmt.Printf("%s\n", string(row))
+		grid = append(grid, row)
+	}
+
+	return &grid, robotPos
+}
+
+func parseMoves(lines []string) *[]byte {
+	var lineIdx int
+	moves := []byte{}
+
+	for y, line := range lines {
+		if len(line) == 0 {
+			lineIdx = y + 1
 		}
 	}
-}
-
-func parseForMoves(line string, lineIdx int, grid *Grid) {
-	for i, ch := range line {
-		(*grid)[lineIdx][i] = byte(ch)
+	for _, line := range lines[lineIdx:] {
+		moves = append(moves, []byte(line)...)
 	}
+	return &moves
 }
 
-func (w *Warehouse) write(moveIdx string, move byte) {
+func (w *Warehouse) write(moveIdx string) {
 	filename := fmt.Sprintf("%s.txt", moveIdx)
 	f, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
 
 	writer := bufio.NewWriter(f)
-	fmt.Fprintf(writer, fmt.Sprintf("next move: %c, idx: %s\n", move, moveIdx))
-	fmt.Fprintf(writer, fmt.Sprintf("current pos: %s\n", w.robotPos.string()))
-	for y, row := range *w.grid {
-		fmt.Fprintf(writer, "%s", string(row))
-		if y < len(*w.grid) {
-			fmt.Fprintln(writer)
+	defer func() {
+		if err := writer.Flush(); err != nil {
+			panic(err)
 		}
+	}()
+
+	// fmt.Fprintf(writer, "next move: %c, idx: %s\n", move, moveIdx)
+	// fmt.Fprintf(writer, "current pos: %s\n", w.robotPos.string())
+	for i := range *w.grid {
+		// fmt.Fprintf(writer, "%s\n", string(cleanRow(row)))
+		// fmt.Fprintf(writer, "%s\n", string(bytes.Trim((*w.grid)[i], "\x00"))) // Remove null bytes
+		fmt.Fprintf(writer, "%s\n", string((*w.grid)[i]))
 	}
-	writer.Flush()
+	return
 }
 
-func readLinesFromStream(file *os.File) *Warehouse {
+func readLinesFromStream(file *os.File) []string {
 	scanner := bufio.NewScanner(file)
-	// rows, cols := 8, 8
-	// rows, cols := 7, 7
-	// rows, cols := 10, 10
-	rows, cols := 50, 50
-
-	var robotPos Coordinate
-	var grid Grid = make([][]byte, rows)
-	for i := range grid {
-		grid[i] = make([]byte, cols*2)
-	}
-	//  0   1   2   3
-	// 0 1 2 3 4 5 6 7
-	readGrid := false
-	moves := []byte{}
-
-	lineIdx := 0
-	moveCnt := 0
+	var lines []string
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		for i, ch := range line {
-			if ch == '@' {
-				robotPos = Coordinate{x: i * 2, y: lineIdx}
-			}
-		}
-		// fmt.Printf("len(line)=%d\n", len(line))
-
-		if lineIdx == rows {
-			readGrid = true
-		}
-
-		if readGrid && len(line) > 1 {
-			// fmt.Printf("we are here")
-			moves = append(moves, []byte(line)...)
-			moveCnt += len(line)
-		} else if !readGrid && len(line) > 1 && lineIdx < rows {
-			fmt.Printf("lineIdx = %d\n", lineIdx)
-			parseForGrid(line, lineIdx, &grid)
-		}
-		lineIdx++
+		lines = append(lines, line)
 	}
-	// fmt.Printf("number of chars: %d\n", moveCnt)
-	return &Warehouse{grid: &grid, moves: &moves, robotPos: robotPos}
+	return lines
 }
