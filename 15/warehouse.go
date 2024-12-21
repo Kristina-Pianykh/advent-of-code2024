@@ -6,6 +6,8 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
+	"time"
 )
 
 type Coordinate struct {
@@ -42,14 +44,10 @@ func main() {
 	// 	}
 	// 	fmt.Println()
 	// }
-	for i, move := range *w.moves {
-		w.update(i, move)
-		w.write(fmt.Sprintf("%d", i))
-		// if i == len(*w.moves)-1 {
-		// 	w.write(fmt.Sprintf("%d", i), '0')
-		// } else {
-		// 	w.write(fmt.Sprintf("%d", i), (*w.moves)[i+1])
-		// }
+	for _, move := range *w.moves {
+		w.update(move)
+		// w.write(fmt.Sprintf("%d", i))
+		w.printGrid()
 	}
 	fmt.Printf("res: %d\n", w.calcGps2())
 }
@@ -68,7 +66,6 @@ func (w *Warehouse) canPushHorizontally(move byte) (int, bool) {
 				}
 				i++
 			}
-			// fmt.Printf("move < crates for cells: %d\n", i)
 			return i, true
 		}
 	case '>':
@@ -98,7 +95,6 @@ func (w *Warehouse) canPushVertically(move byte) ([]Coordinate, bool) {
 
 	collectNodes = func(c Coordinate, move byte) bool {
 		c.v = (*w.grid)[c.y][c.x]
-		// fmt.Printf("c: %s\n", c.string())
 		switch c.v {
 		case '.':
 			return true
@@ -166,7 +162,6 @@ func (w *Warehouse) calcGps2() int {
 	for y := range *w.grid {
 		for x, cell := range (*w.grid)[y] {
 			if cell == '[' {
-				// acc += 100*(len(*w.grid)-y-1) + x
 				acc += 100*y + x
 			}
 		}
@@ -179,7 +174,6 @@ func (w *Warehouse) calcGps1() int {
 	for y := range *w.grid {
 		for x, cell := range (*w.grid)[y] {
 			if cell == 'O' {
-				// acc += 100*(len(*w.grid)-y-1) + x
 				acc += 100*y + x
 			}
 		}
@@ -187,7 +181,7 @@ func (w *Warehouse) calcGps1() int {
 	return acc
 }
 
-func (w *Warehouse) update(moveIdx int, move byte) {
+func (w *Warehouse) update(move byte) {
 	switch move {
 	case '<':
 		// can't walk if next to obstacle
@@ -205,7 +199,6 @@ func (w *Warehouse) update(moveIdx int, move byte) {
 				(*w.grid)[w.robotPos.y][w.robotPos.x-j*2-1] = '['
 				(*w.grid)[w.robotPos.y][w.robotPos.x-j*2] = ']'
 			}
-			// (*w.grid)[w.robotPos.y][w.robotPos.x-crateN-1] = 'O'
 			w.updateRobotPos(-1, 0)
 		}
 
@@ -225,7 +218,6 @@ func (w *Warehouse) update(moveIdx int, move byte) {
 				(*w.grid)[w.robotPos.y][w.robotPos.x+j*2+1] = ']'
 				(*w.grid)[w.robotPos.y][w.robotPos.x+j*2] = '['
 			}
-			// (*w.grid)[w.robotPos.y][w.robotPos.x+crateN+1] = 'O'
 			w.updateRobotPos(1, 0)
 		}
 
@@ -240,15 +232,11 @@ func (w *Warehouse) update(moveIdx int, move byte) {
 		}
 
 		if nodes, ok := w.canPushVertically(move); ok {
-			// fmt.Printf("%d\n", len(nodes))
 			for j := 0; j < len(nodes); j++ {
-				// fmt.Printf("shifting cell: %s\n", nodes[j].string())
 				x := nodes[j].x
 				y := nodes[j].y
 				(*w.grid)[y-1][x] = nodes[j].v
 				(*w.grid)[y][x] = '.'
-				// fmt.Printf("x=%d, y=%d, (*w.grid)[y-1][x]: %c\n", x, y, (*w.grid)[y-1][x])
-				// fmt.Printf("x=%d, y=%d, (*w.grid)[y][x]: %c\n\n", x, y, (*w.grid)[y][x])
 			}
 			w.updateRobotPos(0, -1)
 		}
@@ -300,7 +288,6 @@ func parseGrid(lines []string) (*Grid, Coordinate) {
 				panic(fmt.Sprintf("unrecognized character: %c\n", ch))
 			}
 		}
-		// fmt.Printf("%s\n", string(row))
 		grid = append(grid, row)
 	}
 
@@ -337,11 +324,7 @@ func (w *Warehouse) write(moveIdx string) {
 		}
 	}()
 
-	// fmt.Fprintf(writer, "next move: %c, idx: %s\n", move, moveIdx)
-	// fmt.Fprintf(writer, "current pos: %s\n", w.robotPos.string())
 	for i := range *w.grid {
-		// fmt.Fprintf(writer, "%s\n", string(cleanRow(row)))
-		// fmt.Fprintf(writer, "%s\n", string(bytes.Trim((*w.grid)[i], "\x00"))) // Remove null bytes
 		fmt.Fprintf(writer, "%s\n", string((*w.grid)[i]))
 	}
 	return
@@ -355,4 +338,35 @@ func readLinesFromStream(file *os.File) []string {
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+func (w *Warehouse) printGrid() {
+	fmt.Print("\033[H\033[2J")
+	// padding := 2
+
+	var sb strings.Builder
+	for y := range *w.grid {
+		for _, ch := range (*w.grid)[y] {
+
+			switch ch {
+			case '#':
+				sb.WriteString("🧱")
+			case '[':
+				sb.WriteString(fmt.Sprintf("%s", "【"))
+			case ']':
+				sb.WriteString(fmt.Sprintf("%s", "】"))
+				// continue
+			case '.':
+				// sb.WriteString(fmt.Sprintf("%s", "⬛"))
+				sb.WriteString(fmt.Sprintf("%s", ". "))
+			case '@':
+				sb.WriteString("🤖")
+			default:
+				panic(fmt.Sprintf("unrecorgnized character in the grid: %c\n", ch))
+			}
+		}
+		sb.WriteString("\n")
+	}
+	fmt.Println(sb.String())
+	time.Sleep(80 * time.Millisecond)
 }
