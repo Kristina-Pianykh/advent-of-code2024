@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
+	"strings"
+	"time"
 )
+
+const MAX_INT = int((uint(1) << 63) - 1)
 
 type Coordinate struct {
 	x int
@@ -37,7 +40,7 @@ func main() {
 	// fmt.Printf("End pos: %s\n", maze.end.string())
 
 	score := maze.shortestPath(&drawGrid)
-	// 452371 too high
+	// 265832 too high
 	fmt.Printf("%d\n", score)
 }
 
@@ -57,28 +60,18 @@ func (g *Grid) set(c Coordinate, val byte) {
 	(*g)[c.y][c.x] = val
 }
 
-func get(g *[][]int, c Coordinate) int {
-	return (*g)[c.y][c.x]
-}
-
-func set(g *[][]int, c Coordinate, val int) {
-	(*g)[c.y][c.x] = val
-}
-
 func (c Coordinate) diff(co Coordinate) []int {
 	return []int{c.x - co.x, c.y - co.y}
 }
 
 func (m *Maze) shortestPath(drawGrid *Grid) int {
-	shortestPathScore := int((uint(1) << 63) - 1)
+	shortestPathScore := MAX_INT
 	visited := initVisited(len(*m.grid))
-	scoreGrid := initScoreGrid(len(*m.grid))
-	neighbors := make([]Coordinate, 0, 140*140)
 	visited[m.start.y][m.start.x] = true
 	var pos Coordinate = m.start
 	fileIdx := 0
 
-	var rec func(pos Coordinate)
+	var rec func(pos, prevPos Coordinate, score int)
 
 	dirs := map[byte][]int{
 		'>': {1, 0},
@@ -87,7 +80,15 @@ func (m *Maze) shortestPath(drawGrid *Grid) int {
 		'v': {0, 1},
 	}
 
-	rec = func(pos Coordinate) {
+	rec = func(pos Coordinate, prevPos Coordinate, score int) {
+		if score >= 88432 {
+			return
+		}
+
+		if score >= shortestPathScore {
+			return
+		}
+
 		if visited.get(pos) {
 			return
 		}
@@ -96,40 +97,29 @@ func (m *Maze) shortestPath(drawGrid *Grid) int {
 			return
 		}
 
-		var score int
 		if pos.x == m.end.x && pos.y == m.end.y {
-			prevPos := getAdjacent(visited, drawGrid, pos)
-			fmt.Printf("prevPos: %s\n", prevPos.string())
-			scoreGrid[pos.y][pos.x] = scoreGrid[prevPos.y][prevPos.x] + 1
-
-			if scoreGrid[pos.y][pos.x] < shortestPathScore {
-				shortestPathScore = scoreGrid[pos.y][pos.x]
+			score += 1
+			fmt.Printf("reached end with score: %d. shortestPathScore: %d\n", score, shortestPathScore)
+			if score < shortestPathScore {
+				shortestPathScore = score
+				fmt.Printf("new shortestPathScore: %d\n", shortestPathScore)
 			}
-
-			fmt.Printf("reached end with score: %d\n", scoreGrid[pos.y][pos.x])
-			visited.set(m.end, true)
 			return
 		}
 		visited.set(pos, true)
+		defer visited.set(pos, false)
 
-		prevPos := getAdjacent(visited, drawGrid, pos)
-		fmt.Printf("prevPos: %s\n", prevPos.string())
 		delta := pos.diff(prevPos)
 		// fmt.Printf("delta: %v\n", delta)
 		if len(delta) != 2 {
 			panic(fmt.Sprintf("pos: %s, prevPos: %s, delta: %v\n", pos.string(), prevPos.string(), delta))
 		}
 
-		if prevPos.y == m.end.y && prevPos.x == m.end.x {
-			// scoreGrid[pos.y][pos.x] = scoreGrid[prevPos.y][prevPos.x] + 1
-			// if scoreGrid[pos.y][pos.x] < shortestPathScore {
-			// 	shortestPathScore = scoreGrid[pos.y][pos.x]
-			// }
-		}
+		defer drawGrid.set(pos, m.grid.get(pos))
 
 		if dirs[prevPos.v][0] == delta[0] && dirs[prevPos.v][1] == delta[1] {
 			pos.v = prevPos.v
-			score = 1
+			score += 1
 			drawGrid.set(pos, pos.v)
 		} else {
 			val, err := getKeyByValue(dirs, delta)
@@ -139,82 +129,74 @@ func (m *Maze) shortestPath(drawGrid *Grid) int {
 			// fmt.Printf("changed direction from %c to %c\n", pos.v, val)
 			pos.v = val
 			// fmt.Printf("pos updated direction now: %s\n", pos.string())
-			score = 1001
+			score += 1001
 			drawGrid.set(pos, val)
 		}
-		scoreGrid[pos.y][pos.x] = score + scoreGrid[prevPos.y][prevPos.x]
-		fmt.Printf("score for %s: %d\n", pos.string(), scoreGrid[pos.y][pos.x])
 
 		fileIdx++
-		drawGrid.write(fileIdx, scoreGrid[pos.y][pos.x], neighbors)
+		// drawGrid.printGrid()
+		// drawGrid.write(fileIdx, score)
 
-		for _, n := range pos.getNeighbors() {
-			if !slices.Contains(neighbors, n) && !visited.get(n) {
-				neighbors = append(neighbors, n)
-			}
+		for dir := range dirs {
+			xInc := dirs[dir][0]
+			yInc := dirs[dir][1]
+			nextPos := Coordinate{x: pos.x + xInc, y: pos.y + yInc, v: dir}
+			// fmt.Printf("next step: %s\n", nextPos.string())
+			rec(nextPos, pos, score)
 		}
-
-		// for dir := range dirs {
-		// 	xInc := dirs[dir][0]
-		// 	yInc := dirs[dir][1]
-		// 	nextPos := Coordinate{x: pos.x + xInc, y: pos.y + yInc, v: dir}
-		// 	// fmt.Printf("next step: %s\n", nextPos.string())
-		// 	rec(nextPos, pos, score)
-		// }
-		// drawGrid.set(pos, m.grid.get(pos)) // reset the cell to original
-		// visited.set(pos, false)
 	}
 
 	(*drawGrid).set(m.start, pos.v)
+	// drawGrid.printGrid()
 	// drawGrid.write(fileIdx, 0)
 
-	for _, n := range pos.getNeighbors() {
-		neighbors = append(neighbors, n)
-	}
-	visited.set(m.start, true)
-
-	for {
-		fmt.Printf("len(neighbors): %d\n", len(neighbors))
-		if len(neighbors) == 0 {
-			break
-			// return scoreGrid[m.end.y][m.end.x]
-			// break
-		}
-
-		nextPos := neighbors[0]
-		neighbors = neighbors[1:]
-
-		for _, n := range pos.getNeighbors() {
-			if !slices.Contains(neighbors, n) && !visited.get(n) {
-				neighbors = append(neighbors, n)
-			}
-		}
-		rec(nextPos)
-		drawGrid.printGrid()
-		if visited.get(m.end) {
-			visited.set(m.end, false)
-		}
+	for dir := range dirs {
+		// fmt.Printf("next dir: %c\n", dir)
+		xInc := dirs[dir][0]
+		yInc := dirs[dir][1]
+		nextPos := Coordinate{x: pos.x + xInc, y: pos.y + yInc, v: dir}
+		// fmt.Printf("first dir: %s\n", nextPos.string())
+		rec(nextPos, pos, 0)
+		visited[m.start.y][m.start.x] = false
 	}
 
 	return shortestPathScore
-	// return scoreGrid[m.end.y][m.end.x]
 }
 
-func (c Coordinate) getNeighbors() []Coordinate {
-	neighbors := []Coordinate{}
-	dirs := map[byte][]int{
-		'>': {1, 0},
-		'<': {-1, 0},
-		'^': {0, -1},
-		'v': {0, 1},
+func (g *Grid) printGrid() {
+	fmt.Print("\033[H\033[2J")
+	// padding := 2
+
+	var sb strings.Builder
+	for y := range *g {
+		for _, ch := range (*g)[y] {
+
+			switch ch {
+			case '#':
+				sb.WriteString("🧱")
+			case '>':
+				sb.WriteString(fmt.Sprintf("%s", "> "))
+			case '<':
+				sb.WriteString(fmt.Sprintf("%s", "< "))
+			case '^':
+				sb.WriteString(fmt.Sprintf("%s", "^ "))
+			case 'v':
+				sb.WriteString(fmt.Sprintf("%s", "v "))
+			case '.':
+				// sb.WriteString(fmt.Sprintf("%s", "⬛"))
+				sb.WriteString(fmt.Sprintf("%s", ". "))
+			case 'S':
+				sb.WriteString("🤖")
+			case 'E':
+				sb.WriteString("🤖")
+			default:
+				panic(fmt.Sprintf("unrecorgnized character in the grid: %c\n", ch))
+			}
+		}
+		sb.WriteString("\n")
 	}
-	for dir := range dirs {
-		xInc := dirs[dir][0]
-		yInc := dirs[dir][1]
-		neighbor := Coordinate{x: c.x + xInc, y: c.y + yInc, v: dir}
-		neighbors = append(neighbors, neighbor)
-	}
-	return neighbors
+	fmt.Println(sb.String())
+	time.Sleep(80 * time.Millisecond)
 }
 
 func getKeyByValue(dirs map[byte][]int, val []int) (byte, error) {
@@ -244,67 +226,16 @@ func initVisited(size int) Visited {
 	return visited
 }
 
-func initScoreGrid(size int) [][]int {
-	var grid [][]int = make([][]int, size)
-	for y := range grid {
-		grid[y] = make([]int, size)
-	}
-	return grid
-}
-
-func (grid *Grid) printGrid() {
-	for y := range *grid {
-		for _, cell := range (*grid)[y] {
-			fmt.Printf("%c", cell)
-		}
-		fmt.Println()
-	}
-}
-
-func getAdjacent(v Visited, drawGrid *Grid, c Coordinate) Coordinate {
-	dirs := map[byte][]int{
-		'>': {1, 0},
-		'<': {-1, 0},
-		'^': {0, -1},
-		'v': {0, 1},
-	}
-	var pos Coordinate
-	for dir := range dirs {
-		xInc := dirs[dir][0]
-		yInc := dirs[dir][1]
-
-		pos = Coordinate{x: c.x + xInc, y: c.y + yInc}
-		fmt.Printf("pos: %s, drawGrid.get(pos): %c\n", pos.string(), drawGrid.get(pos))
-		if v.get(pos) && drawGrid.get(pos) != '#' {
-			pos.v = drawGrid.get(pos)
-			fmt.Printf("pos.v: %c\n", pos.v)
-			return pos
-		}
-	}
-	return pos
-}
-
-// func remove(arr []Coordinate, toRemove Coordinate) []Coordinate {
-// 	if len(arr) == 0 {
-// 		return arr
-// 	}
-// 	if !slices.Contains(arr, toRemove) {
-// 		return arr
-// 	}
-//
-// 	var new_arr []Coordinate = make([]Coordinate, len(arr)-1)
-// 	idx := 0
-// 	for _, c := range arr {
-// 		if c == toRemove {
-// 			continue
+// func (grid *Grid) printGrid() {
+// 	for y := range *grid {
+// 		for _, cell := range (*grid)[y] {
+// 			fmt.Printf("%c", cell)
 // 		}
-// 		new_arr[idx] = c
-// 		idx++
+// 		fmt.Println()
 // 	}
-// 	return new_arr
 // }
 
-func (g *Grid) write(name int, score int, neighbors []Coordinate) {
+func (g *Grid) write(name int, score int) {
 	filename := fmt.Sprintf("%d.txt", name)
 	f, err := os.Create(filename)
 	if err != nil {
@@ -323,11 +254,6 @@ func (g *Grid) write(name int, score int, neighbors []Coordinate) {
 	for i := range *g {
 		fmt.Fprintf(writer, "%s\n", string((*g)[i]))
 	}
-	fmt.Fprintf(writer, "neighbors:\n")
-	for _, n := range neighbors {
-		fmt.Fprintf(writer, "   %s\n", n.string())
-	}
-	fmt.Fprintln(writer)
 	return
 }
 
