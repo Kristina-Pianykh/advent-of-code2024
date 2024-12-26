@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"container/heap"
-	"errors"
 	"fmt"
 	"os"
-	"slices"
 )
 
 const MAX_INT = int((uint(1) << 63) - 1)
@@ -99,28 +97,8 @@ func main() {
 	lines := readLinesFromStream(os.Stdin)
 	maze := parseGrid(lines)
 	res := maze.dijkstra()
-	fmt.Printf("res: %d\n", res)
+	fmt.Printf("part 1 | score: %d\n", res)
 	// drawGrid := initDrawGrid(*maze.grid)
-}
-
-func (v Visited) get(c Coordinate) bool {
-	return v[c.y][c.x]
-}
-
-func (v Visited) set(c Coordinate, val bool) {
-	v[c.y][c.x] = val
-}
-
-func (g *Grid) get(c Coordinate) byte {
-	return (*g)[c.y][c.x]
-}
-
-func (g *Grid) set(c Coordinate, val byte) {
-	(*g)[c.y][c.x] = val
-}
-
-func (c Coordinate) diff(co Coordinate) []int {
-	return []int{c.x - co.x, c.y - co.y}
 }
 
 func (m *Maze) dijkstra() int {
@@ -143,8 +121,6 @@ func (m *Maze) dijkstra() int {
 	}
 	heap.Push(&pq, startNode)
 	dist[m.start.y][m.start.x] = 0
-	// node := heap.Pop(&pq).(*Node)
-	// fmt.Printf("%s\n", node.string())
 
 	for pq.Len() > 0 {
 
@@ -156,15 +132,10 @@ func (m *Maze) dijkstra() int {
 
 		neighbors := u.c.getNeighbors(m.grid)
 		for _, n := range neighbors {
-			// if !pq.Contains(n) {
-			// 	continue
-			// }
-
 			alt := u.cost + getCost(u.c, n)
+			// fmt.Printf("dist of %s: %d\n", n.string(), dist[n.y][n.x])
 
-			fmt.Printf("dist of %s: %d\n", n.string(), dist[n.y][n.x])
 			if alt < dist[n.y][n.x] {
-				// prev[n.y][n.x] = u.c
 				dist[n.y][n.x] = alt
 				heap.Push(&pq, &Node{
 					c:    n,
@@ -182,27 +153,6 @@ func getCost(u, v Coordinate) int {
 		return 1
 	}
 	return 1001
-	// switch u.v {
-	// case '>':
-	// 	if v.x == u.x+1 && v.y == u.y {
-	// 		return 1
-	// 	}
-	// case '<':
-	// 	if v.x == u.x-1 && v.y == u.y {
-	// 		return 1
-	// 	}
-	// case 'v':
-	// 	if v.x == u.x && v.y == u.y+1 {
-	// 		return 1
-	// 	}
-	// case '^':
-	// 	if v.x == u.x && v.y == u.y-1 {
-	// 		return 1
-	// 	}
-	// default:
-	// 	panic(fmt.Sprintf("undefined direction of current node: %c\n", u.v))
-	// }
-	// return 1001
 }
 
 func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
@@ -219,70 +169,25 @@ func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 		'v': {'<', '>'},
 	}
 	neighbors := []Coordinate{}
-	// fmt.Printf("%c\n", c.v)
 	straight := Coordinate{x: c.x + dirs[c.v][0], y: c.y + dirs[c.v][1]}
-	if grid.get(straight) != '#' {
+	if (*grid)[straight.y][straight.x] != '#' {
 		straight.v = c.v
 		neighbors = append(neighbors, straight)
 	}
 
 	for _, rot := range rotations[c.v] {
 		swirved := Coordinate{x: c.x + dirs[rot][0], y: c.y + dirs[rot][1]}
-		if grid.get(swirved) != '#' {
+		if (*grid)[swirved.y][swirved.x] != '#' {
 			swirved.v = rot
 			neighbors = append(neighbors, swirved)
 		}
 	}
 
-	for _, n := range neighbors {
-		fmt.Printf("%s\n", n.string())
-	}
-	fmt.Println()
+	// for _, n := range neighbors {
+	// 	fmt.Printf("%s\n", n.string())
+	// }
+	// fmt.Println()
 	return neighbors
-}
-
-func nodeWithMinDist(distGrid *[][]int) Coordinate {
-	minDist := MAX_INT
-	c := Coordinate{}
-	for y := range *distGrid {
-		for x, cell := range (*distGrid)[y] {
-			if cell < minDist {
-				minDist = cell
-				c.y = y
-				c.x = x
-			}
-		}
-	}
-	return c
-}
-
-func remove(arr []Coordinate, toRemove Coordinate) []Coordinate {
-	if len(arr) == 0 {
-		return arr
-	}
-	if !slices.Contains(arr, toRemove) {
-		return arr
-	}
-
-	var new_arr []Coordinate = make([]Coordinate, len(arr)-1)
-	idx := 0
-	for _, c := range arr {
-		if c == toRemove {
-			continue
-		}
-		new_arr[idx] = c
-		idx++
-	}
-	return new_arr
-}
-
-func getKeyByValue(dirs map[byte][]int, val []int) (byte, error) {
-	for k := range dirs {
-		if dirs[k][0] == val[0] && dirs[k][1] == val[1] {
-			return k, nil
-		}
-	}
-	return '0', errors.New(fmt.Sprintf("key for %v not found in dirs\n", val))
 }
 
 func initDrawGrid(grid Grid) Grid {
@@ -302,15 +207,6 @@ func initVisited(size int) Visited {
 	}
 	return visited
 }
-
-// func (grid *Grid) printGrid() {
-// 	for y := range *grid {
-// 		for _, cell := range (*grid)[y] {
-// 			fmt.Printf("%c", cell)
-// 		}
-// 		fmt.Println()
-// 	}
-// }
 
 func (g *Grid) write(name int, score int) {
 	filename := fmt.Sprintf("%d.txt", name)
