@@ -75,9 +75,10 @@ func (pq *PriorityQueue) update(c Coordinate, cost int) {
 }
 
 type Coordinate struct {
-	x int
-	y int
-	v byte
+	x    int
+	y    int
+	v    byte
+	cost int
 }
 
 func (c Coordinate) string() string {
@@ -93,25 +94,142 @@ type Maze struct {
 	end   Coordinate
 }
 
+// func remove(arr []any, idxToRemove int) []any {
+// 	if len(arr) == 0 {
+// 		return arr
+// 	}
+// 	if !slices.Contains(arr, arr[idxToRemove]) {
+// 		return arr
+// 	}
+//
+// 	var new_arr []Coordinate = make([]Coordinate, len(arr)-1)
+// 	idx := 0
+// 	for i, c := range arr {
+// 		if i == idxToRemove {
+// 			continue
+// 		}
+// 		new_arr[idx] = c
+// 		idx++
+// 	}
+// 	return new_arr
+// }
+
 func main() {
 	lines := readLinesFromStream(os.Stdin)
 	maze := parseGrid(lines)
 	res := maze.dijkstra()
 	fmt.Printf("part 1 | score: %d\n", res)
+	// res2 := maze.bfs(res)
+	// fmt.Printf("part 2 | res: %d\n", res2)
 	// drawGrid := initDrawGrid(*maze.grid)
 }
 
+// func (m *Maze) bfs(targetScore int) int {
+// 	size := len(*m.grid)
+// 	dist := make([][]int, size)
+// 	for y := range *m.grid {
+// 		dist[y] = make([]int, size)
+// 		for x := range (*m.grid)[y] {
+// 			dist[y][x] = MAX_INT
+// 		}
+// 	}
+//
+// 	visited := make([][]map[bool]int, size)
+// 	for y := range visited {
+// 		visited[y] = make([]map[bool]int, size)
+// 		for x := range visited[y] {
+// 			visited[y][x] = map[bool]int{false: 0}
+// 		}
+// 	}
+//
+// 	toVisit := []Coordinate{}
+// 	toVisit = append(toVisit, Coordinate{
+// 		x: m.start.x, y: m.start.y, v: m.start.v, cost: 0},
+// 	)
+//
+// 	dist[m.start.y][m.start.x] = 0
+//
+// 	for len(toVisit) > 0 {
+// 		fmt.Printf("len(toVisit): %d\n", len(toVisit))
+//
+// 		u := toVisit[0]
+// 		// toVisit = toVisit[1:]
+// 		toVisit = remove(toVisit, 0)
+//
+// 		if u.x == m.end.x && u.y == m.end.y {
+//
+// 			if u.cost == targetScore {
+// 				visited[u.y][u.x] = map[bool]int{true: u.cost}
+// 			}
+// 			continue
+// 		}
+//
+// 		neighbors := u.getNeighbors(m.grid)
+// 		for _, n := range neighbors {
+// 			alt := u.cost + getCost(u, n)
+// 			// fmt.Printf("dist of %s: %d\n", n.string(), dist[n.y][n.x])
+//
+// 			n.cost = alt
+// 			toVisit = append(toVisit, n)
+// 			if !contains(toVisit, n) && !containsVisited(visited, n) {
+// 				toVisit = append(toVisit, n)
+// 			}
+// 			visited[n.y][n.x] = map[bool]int{true: n.cost}
+// 			// if alt < dist[n.y][n.x] {
+// 			// 	dist[n.y][n.x] = alt
+// 			// 	n.cost = alt
+// 			// 	toVisit = append(toVisit, n)
+// 			// }
+// 		}
+// 	}
+//
+// 	cnt := 0
+// 	for y := range visited {
+// 		for _, cell := range visited[y] {
+// 			for k := range cell {
+// 				if k {
+// 					cnt++
+// 				}
+// 			}
+// 		}
+// 	}
+//
+// 	return cnt
+// 	// return -1
+// }
+
+func contains(toVisit []Coordinate, c Coordinate) bool {
+	for _, co := range toVisit {
+		if co.x == c.x && co.y == c.y {
+			return true
+		}
+	}
+	return false
+}
+
+func containsVisited(visited [][]map[bool]int, c Coordinate) bool {
+	for k := range visited[c.y][c.x] {
+		if k && visited[c.y][c.x][k] == c.cost {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Maze) dijkstra() int {
-	size := len(*m.grid)
-	dist := make([][]int, size)
+	rows := len(*m.grid)
+	cols := len((*m.grid)[0])
+	dist := make([][]int, rows)
 	for y := range *m.grid {
-		dist[y] = make([]int, size)
+		dist[y] = make([]int, cols)
 		for x := range (*m.grid)[y] {
 			dist[y][x] = MAX_INT
 		}
 	}
+	drawGrid := initDrawGrid(*m.grid)
 
-	pq := make(PriorityQueue, 0, size*size)
+	cnt := 0
+	pq := make(PriorityQueue, 0, rows*cols)
 	heap.Init(&pq)
 
 	// Start node
@@ -120,14 +238,16 @@ func (m *Maze) dijkstra() int {
 		cost: 0,
 	}
 	heap.Push(&pq, startNode)
+	drawGrid[startNode.c.y][startNode.c.x] = 'O'
+	cnt++
 	dist[m.start.y][m.start.x] = 0
 
 	for pq.Len() > 0 {
-
 		u := heap.Pop(&pq).(*Node)
 
 		if u.c.x == m.end.x && u.c.y == m.end.y {
-			return u.cost
+			fmt.Printf("hit the end\n")
+			// return u.cost
 		}
 
 		neighbors := u.c.getNeighbors(m.grid)
@@ -141,11 +261,23 @@ func (m *Maze) dijkstra() int {
 					c:    n,
 					cost: alt,
 				})
+
+				drawGrid[n.y][n.x] = 'O'
+				// drawGrid.printGrid()
+				cnt++
 			}
 		}
 	}
 
+	fmt.Printf("cnt: %d\n", cnt)
+	// drawGrid.printGrid()
 	return -1
+}
+
+func (g Grid) printGrid() {
+	for y := range g {
+		fmt.Printf("%s\n", string(g[y]))
+	}
 }
 
 func getCost(u, v Coordinate) int {
@@ -191,10 +323,11 @@ func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 }
 
 func initDrawGrid(grid Grid) Grid {
-	size := len(grid)
-	var drawGrid Grid = make([][]byte, size)
+	rows := len(grid)
+	cols := len(grid[0])
+	var drawGrid Grid = make([][]byte, rows)
 	for y := range grid {
-		drawGrid[y] = make([]byte, size)
+		drawGrid[y] = make([]byte, cols)
 		copy(drawGrid[y], grid[y])
 	}
 	return drawGrid
