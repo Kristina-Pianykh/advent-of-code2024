@@ -229,6 +229,7 @@ func (m *Maze) dijkstra() int {
 	drawGrid := initDrawGrid(*m.grid)
 
 	cnt := 0
+	lst := []Coordinate{}
 	pq := make(PriorityQueue, 0, rows*cols)
 	heap.Init(&pq)
 
@@ -239,6 +240,7 @@ func (m *Maze) dijkstra() int {
 	}
 	heap.Push(&pq, startNode)
 	drawGrid[startNode.c.y][startNode.c.x] = 'O'
+	lst = append(lst, startNode.c)
 	cnt++
 	dist[m.start.y][m.start.x] = 0
 
@@ -257,21 +259,38 @@ func (m *Maze) dijkstra() int {
 
 			if alt < dist[n.y][n.x] {
 				dist[n.y][n.x] = alt
-				heap.Push(&pq, &Node{
-					c:    n,
-					cost: alt,
-				})
+				if alt < 7036 {
+					heap.Push(&pq, &Node{
+						c:    n,
+						cost: alt,
+					})
 
-				drawGrid[n.y][n.x] = 'O'
-				// drawGrid.printGrid()
-				cnt++
+					drawGrid[n.y][n.x] = 'O'
+					// drawGrid.printGrid()
+					if !containsLst(lst, n) {
+						lst = append(lst, n)
+					}
+
+					cnt++
+				}
 			}
 		}
 	}
 
-	fmt.Printf("cnt: %d\n", cnt)
-	// drawGrid.printGrid()
+	// 7220 too high
+	fmt.Printf("cnt: %d\n", len(lst))
+	// fmt.Printf("%v\n", lst)
+	drawGrid.printGrid()
 	return -1
+}
+
+func containsLst(lst []Coordinate, c Coordinate) bool {
+	for i := range lst {
+		if lst[i].x == c.x && lst[i].y == c.y {
+			return true
+		}
+	}
+	return false
 }
 
 func (g Grid) printGrid() {
