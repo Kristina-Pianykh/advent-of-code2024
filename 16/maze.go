@@ -5,6 +5,8 @@ import (
 	"container/heap"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 )
 
 const MAX_INT = int((uint(1) << 63) - 1)
@@ -98,7 +100,96 @@ func main() {
 	maze := parseGrid(lines)
 	res := maze.dijkstra()
 	fmt.Printf("part 1 | score: %d\n", res)
-	// drawGrid := initDrawGrid(*maze.grid)
+	drawGrid := initDrawGrid(*maze.grid)
+	res2 := maze.findBestCells(res, &drawGrid)
+	fmt.Printf("part 2 | score: %d\n", res2)
+}
+
+func (m *Maze) findBestCells(targetScore int, drawGrid *Grid) int {
+	bestCells := []Coordinate{}
+	var dfs func(nextC Coordinate, prevC Coordinate, score int) bool
+
+	dfs = func(nextC Coordinate, prevC Coordinate, prevScore int) bool {
+		reachedEnd := nextC.x == m.end.x && nextC.y == m.end.y
+
+		updatedScore := prevScore + getCost(nextC, prevC)
+
+		if reachedEnd && updatedScore == targetScore {
+			return true
+		}
+
+		if updatedScore >= targetScore {
+			return false
+		}
+
+		isValidPath := false
+		validPaths := []bool{}
+
+		for _, n := range nextC.getNeighbors(m.grid) {
+			// fmt.Printf("n: %s\n", n.string())
+			isValidPath = dfs(n, nextC, updatedScore)
+			validPaths = append(validPaths, isValidPath)
+
+			if isValidPath && !contains(bestCells, n) {
+				(*drawGrid)[n.y][n.x] = 'O'
+				// drawGrid.printGrid()
+				bestCells = append(bestCells, n)
+			}
+		}
+
+		for _, p := range validPaths {
+			if p {
+				return true
+			}
+		}
+		return false
+	}
+
+	bestCells = append(bestCells, m.start)
+	for _, n := range m.start.getNeighbors(m.grid) {
+		// fmt.Printf("n outer: %s\n", n.string())
+		if dfs(n, m.start, 0) && !contains(bestCells, n) {
+			(*drawGrid)[n.y][n.x] = 'O'
+			bestCells = append(bestCells, n)
+		}
+	}
+
+	(*drawGrid)[m.start.y][m.start.x] = 'O'
+	// drawGrid.printGrid()
+
+	cnt := 0
+	for y := range *drawGrid {
+		for _, cell := range (*drawGrid)[y] {
+			if cell == 'O' {
+				cnt++
+			}
+		}
+	}
+
+	fmt.Printf("cnt: %d\n", cnt)
+	return len(bestCells)
+}
+
+func contains(lst []Coordinate, c Coordinate) bool {
+	for _, co := range lst {
+		if co.x == c.x && co.y == c.y {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Grid) printGrid() {
+	fmt.Print("\033[H\033[2J")
+	// padding := 2
+
+	var sb strings.Builder
+	for y := range *g {
+		sb.WriteString(string((*g)[y]))
+		sb.WriteString("\n")
+	}
+	fmt.Println(sb.String())
+	time.Sleep(150 * time.Millisecond)
 }
 
 func (m *Maze) dijkstra() int {
