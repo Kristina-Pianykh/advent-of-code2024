@@ -5,6 +5,7 @@ import (
 	"container/heap"
 	"fmt"
 	"os"
+	"slices"
 )
 
 const MAX_INT = int((uint(1) << 63) - 1)
@@ -96,32 +97,23 @@ type Maze struct {
 func main() {
 	lines := readLinesFromStream(os.Stdin)
 	maze := parseGrid(lines)
-	drawGrid := initDrawGrid(*maze.grid)
-	res := maze.dijkstra(&drawGrid)
+	res := maze.dijkstra()
 	fmt.Printf("part 1 | score: %d\n", res)
+	// drawGrid := initDrawGrid(*maze.grid)
 }
 
-func (m *Maze) dijkstra(drawGrid *Grid) int {
+func (m *Maze) dijkstra() int {
 	rows := len(*m.grid)
 	cols := len((*m.grid)[0])
 	dist := make([][]int, rows)
 	paths := make([][][]Coordinate, rows)
-	mem := make([][]map[byte]int, rows)
 
 	for y := range *m.grid {
 		dist[y] = make([]int, rows)
 		paths[y] = make([][]Coordinate, cols)
-		mem[y] = make([]map[byte]int, cols)
 		for x := range (*m.grid)[y] {
 			dist[y][x] = MAX_INT
 			paths[y][x] = []Coordinate{}
-			mem[y][x] = map[byte]int{
-				'>': MAX_INT,
-				'<': MAX_INT,
-				'^': MAX_INT,
-				'v': MAX_INT,
-				'E': MAX_INT,
-			}
 		}
 	}
 
@@ -138,14 +130,13 @@ func (m *Maze) dijkstra(drawGrid *Grid) int {
 	// paths[m.start.y][m.start.x][m.start] = true
 
 	for pq.Len() > 0 {
-		// fmt.Printf("pq:\n")
-		// for _, v := range pq {
-		// 	fmt.Printf("  %s\n", v.string())
-		// }
+    fmt.Printf("pq:\n")
+    for _, v := range pq {
+      fmt.Printf("  %s\n", v.string())
+    }
 
 		u := heap.Pop(&pq).(*Node)
-		mem[u.c.y][u.c.x][u.c.v] = u.cost
-		// fmt.Printf("next u: %s\n", u.string())
+		fmt.Printf("next u: %s\n", u.string())
 
 		if u.c.x == m.end.x && u.c.y == m.end.y {
 			paths[m.end.y][m.end.x] = append(paths[m.end.y][m.end.x], u.c)
@@ -153,136 +144,69 @@ func (m *Maze) dijkstra(drawGrid *Grid) int {
 			// return u.cost
 		}
 
-		neighbors := u.c.getNeighbors(m.grid, false)
+		neighbors := u.c.getNeighbors(m.grid)
 		for _, n := range neighbors {
 			alt := u.cost + getCost(u.c, n)
 			// fmt.Printf("dist of %s: %d\n", n.string(), dist[n.y][n.x])
 
-			// fmt.Printf("mem[n.y][n.x][n.v] = %d\n", mem[n.y][n.x][n.v])
-			// fmt.Printf("alt = %d\n", alt)
-			if alt < mem[n.y][n.x][n.v] {
+			if alt < dist[n.y][n.x] {
 				dist[n.y][n.x] = alt
 				heap.Push(&pq, &Node{
 					c:    n,
 					cost: alt,
 				})
-				// fmt.Printf("pushing %s\n", n.string())
+				fmt.Printf("pushing %s\n", n.string())
 				paths[n.y][n.x] = append(paths[n.y][n.x], u.c)
 			}
 		}
 	}
 
-	pp := []Coordinate{}
-	var rec func(c Coordinate, prevC Coordinate, currScore int) bool
+	// for _, key := range paths[m.end.y][m.end.x] {
+	// 	fmt.Printf("%s\n", key.string())
+	// }
+
+	var rec func(c Coordinate, cnt int) (int, bool)
 	visited := make([][]bool, rows)
-	for y := range *m.grid {
+	pp := []Coordinate{}
+	for y := range visited {
 		visited[y] = make([]bool, cols)
 	}
-
-	rec = func(c Coordinate, prevC Coordinate, currScore int) bool {
-		rotations := map[byte][]byte{
-			'>': {'^', 'v'},
-			'<': {'v', '^'},
-			'^': {'<', '>'},
-			'v': {'>', '<'},
+	rec = func(c Coordinate, cnt int) (int, bool) {
+		if c == m.start {
+			pp = append(pp, m.start)
+			return cnt, true
 		}
-		var newScore int
 		if visited[c.y][c.x] {
-			return false
+			return 0, false
 		}
-		if currScore < 0 {
-			return false
-		}
-
-		if c.v != prevC.v && c.v != rotations[prevC.v][0] && c.v != rotations[prevC.v][1] {
-			return false
-		}
-		// fmt.Printf("c: %s\n", c.string())
 
 		visited[c.y][c.x] = true
-		defer func() { visited[c.y][c.x] = false }()
-		if c.v == prevC.v {
-			newScore = currScore - 1
-		} else {
-			newScore = currScore - 1001
+		if !slices.Contains(pp, c) {
+			pp = append(pp, c)
 		}
 
-		if c.x == m.start.x && c.y == m.start.y {
-			fmt.Printf("reached start %s with score: %d\n", c.string(), newScore)
-			if c.v == '>' && newScore == 0 {
-				fmt.Printf("we are here\n")
-				return true
-			}
-			if c.v != '>' && newScore == 1000 {
-				fmt.Printf("we are here\n")
-				return true
-			}
-			return false
-		}
+		defer func() { visited[c.y][c.x] = false }() // Backtrack on exit
 
-		all := []bool{}
-		for _, n := range c.getNeighbors(m.grid, true) {
-			res := rec(n, c, newScore)
-			all = append(all, res)
-			if res {
-				if !contains(pp, n) {
-					pp = append(pp, n)
-				}
+		agg := 0
+		for _, key := range paths[c.y][c.x] {
+			if val, ok := rec(key, cnt+1); ok {
+				agg += val
 			}
 		}
-		for _, res := range all {
-			if res {
-				return true
-			}
+		if agg > 0 {
+			return agg + cnt, true
 		}
-		return false
+		return 0, false
 	}
 
-	minScore := MAX_INT
-	for key := range mem[m.end.y][m.end.x] {
-		if mem[m.end.y][m.end.x][key] < minScore {
-			minScore = mem[m.end.y][m.end.x][key]
-		}
+	res, _ := rec(m.end, 1)
+	fmt.Printf("rec: %d\n", res)
+	fmt.Printf("rec: %d\n", len(pp))
+	for i := range pp {
+		fmt.Printf("%s\n", pp[i].string())
 	}
 
-	fmt.Printf("end: %s\n", m.end.string())
-	pp = append(pp, m.end)
-	for key := range mem[m.end.y][m.end.x] {
-		if mem[m.end.y][m.end.x][key] == minScore {
-			fmt.Printf("%c\n", key)
-			prevC := m.end
-			prevC.v = key
-			for _, n := range prevC.getNeighbors(m.grid, true) {
-				fmt.Printf("high level n: %s, prevC: %s\n", n.string(), prevC.string())
-				if rec(n, prevC, minScore) {
-					pp = append(pp, n)
-				}
-			}
-		}
-	}
-	fmt.Printf("micScore: %d\n", minScore)
-	fmt.Printf("cells: %d\n", len(pp))
-
-	for y := range *drawGrid {
-		for x, cell := range (*drawGrid)[y] {
-			if contains(pp, Coordinate{x: x, y: y}) {
-				fmt.Printf("O")
-				continue
-			}
-			fmt.Printf("%c", cell)
-		}
-		fmt.Println()
-	}
 	return -1
-}
-
-func contains(lst []Coordinate, c Coordinate) bool {
-	for i := range lst {
-		if lst[i].x == c.x && lst[i].y == c.y {
-			return true
-		}
-	}
-	return false
 }
 
 func getCost(u, v Coordinate) int {
@@ -292,7 +216,7 @@ func getCost(u, v Coordinate) int {
 	return 1001
 }
 
-func (c Coordinate) getNeighbors(grid *Grid, backtrack bool) []Coordinate {
+func (c Coordinate) getNeighbors(grid *Grid) []Coordinate {
 	dirs := map[byte][]int{
 		'>': {1, 0},
 		'<': {-1, 0},
@@ -305,27 +229,15 @@ func (c Coordinate) getNeighbors(grid *Grid, backtrack bool) []Coordinate {
 		'^': {'>', '<'},
 		'v': {'<', '>'},
 	}
-	var straight Coordinate
-	var swirved Coordinate
-
 	neighbors := []Coordinate{}
-	if backtrack {
-		straight = Coordinate{x: c.x - dirs[c.v][0], y: c.y - dirs[c.v][1]}
-	} else {
-		straight = Coordinate{x: c.x + dirs[c.v][0], y: c.y + dirs[c.v][1]}
-	}
-
+	straight := Coordinate{x: c.x + dirs[c.v][0], y: c.y + dirs[c.v][1]}
 	if (*grid)[straight.y][straight.x] != '#' {
 		straight.v = c.v
 		neighbors = append(neighbors, straight)
 	}
 
 	for _, rot := range rotations[c.v] {
-		if backtrack {
-			swirved = Coordinate{x: c.x - dirs[rot][0], y: c.y - dirs[rot][1]}
-		} else {
-			swirved = Coordinate{x: c.x + dirs[rot][0], y: c.y + dirs[rot][1]}
-		}
+		swirved := Coordinate{x: c.x + dirs[rot][0], y: c.y + dirs[rot][1]}
 		if (*grid)[swirved.y][swirved.x] != '#' {
 			swirved.v = rot
 			neighbors = append(neighbors, swirved)
