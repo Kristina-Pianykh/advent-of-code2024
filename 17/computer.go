@@ -51,20 +51,42 @@ func calcCombo(registers map[string]int, operand int) int {
 
 func solve2(origRegisters map[string]int, prog []int) int {
 	var output []int
-	a := 0
-	for {
-		if a%100000 == 0 {
-			fmt.Printf("A: %d\n", a)
+	// lower := 1
+	// for i := 0; i < 14; i++ {
+	// 	lower = lower * 8
+	// }
+	// upper := 1
+	// for i := 0; i < 16; i++ {
+	// 	upper = upper * 8
+	// }
+	a := 1
+	for i := 0; i < 15; i++ {
+		a = a * 8
+	}
+
+	// fmt.Printf("a: %d\n", lower)
+	fmt.Printf("prog  : %s\n", stringify(prog))
+
+	i := a * 3
+	for ; i <= (a * 4); i++ {
+		if i%100000 == 0 {
+			fmt.Printf("A: %d\n", i)
 		}
 		registers := origRegisters
-		registers["A"] = a
+		registers["A"] = i
 		_, output = process(registers, prog)
+		// fmt.Printf("output: %s\n", stringify(output))
+		// 281474976710664 too high
+		// 105553129200000 somewhere around here
+		// 140737488355328 obere schranke
 		if stringify(output) == stringify(prog) {
+			fmt.Printf("i: %d\n", i)
+			fmt.Printf("prog: %s\n", stringify(prog))
+			fmt.Printf("output: %s\n", stringify(output))
 			break
 		}
-		a++
 	}
-	return a
+	return i
 }
 
 func process(registers map[string]int, prog []int) (map[string]int, []int) {
@@ -102,6 +124,9 @@ func process(registers map[string]int, prog []int) (map[string]int, []int) {
 			i = i + 2
 		case 5:
 			output = append(output, combo%8)
+			if prog[len(output)-1] != output[len(output)-1] {
+				return registers, output
+			}
 			// fmt.Printf("combo: %d, combo mod 8: %d\n", combo, combo%8)
 			// fmt.Printf("output: %v\n", output)
 			i = i + 2
