@@ -13,13 +13,11 @@ import (
 func main() {
 	lines := readLinesFromStream(os.Stdin)
 	registers, prog := parse(lines)
-	registers, output := process(registers, prog)
-	fmt.Printf("%v\n", registers)
-	// fmt.Printf("%v\n", output)
+	_, _, _, output := process(registers["A"], registers["B"], registers["C"], prog)
 	fmt.Printf("part 1 | output: %s\n", stringify(output))
 
-	a := solve2(registers, prog)
-	fmt.Printf("solved for A: %d\n", a)
+	a := solve2(prog)
+	fmt.Printf("part 2 | solved for A: %d\n", a)
 }
 
 func stringify(lst []int) string {
@@ -34,12 +32,12 @@ func stringify(lst []int) string {
 	return sb.String()
 }
 
-func calcCombo(registers map[string]int, operand int) int {
+func calcCombo(A, B, C int, operand int) int {
 	var combo int
 	regCombo := map[int]int{
-		4: registers["A"],
-		5: registers["B"],
-		6: registers["C"],
+		4: A,
+		5: B,
+		6: C,
 	}
 	if operand >= 0 && operand <= 3 {
 		combo = operand
@@ -49,98 +47,136 @@ func calcCombo(registers map[string]int, operand int) int {
 	return combo
 }
 
-func solve2(origRegisters map[string]int, prog []int) int {
-	var output []int
-	// lower := 1
-	// for i := 0; i < 14; i++ {
-	// 	lower = lower * 8
-	// }
-	// upper := 1
-	// for i := 0; i < 16; i++ {
-	// 	upper = upper * 8
-	// }
-	a := 1
-	for i := 0; i < 15; i++ {
-		a = a * 8
+func binPretty(bin string) string {
+	var sb strings.Builder
+
+	i := 0
+	rest := len(bin) % 3
+	padding := 3 - rest
+	if rest > 0 {
+		sb.WriteString(strings.Repeat("0", padding))
+
+		for ; i < rest; i++ {
+			sb.WriteByte(bin[i])
+		}
 	}
 
-	// fmt.Printf("a: %d\n", lower)
-	fmt.Printf("prog  : %s\n", stringify(prog))
-
-	i := a * 3
-	for ; i <= (a * 4); i++ {
-		if i%100000 == 0 {
-			fmt.Printf("A: %d\n", i)
+	for ; i <= len(bin)-1; i++ {
+		if (i+padding)%3 == 0 {
+			sb.WriteString(" ")
 		}
-		registers := origRegisters
-		registers["A"] = i
-		_, output = process(registers, prog)
-		// fmt.Printf("output: %s\n", stringify(output))
-		// 281474976710664 too high
-		// 105553129200000 somewhere around here
-		// 140737488355328 obere schranke
-		if stringify(output) == stringify(prog) {
-			fmt.Printf("i: %d\n", i)
-			fmt.Printf("prog: %s\n", stringify(prog))
-			fmt.Printf("output: %s\n", stringify(output))
-			break
+		sb.WriteByte(bin[i])
+	}
+	return sb.String()
+}
+
+func intToBinString(v int) string {
+	return strconv.FormatInt(int64(v), 2)
+}
+
+func crackSuffix(prog []int, nOctals int) int {
+	var sb strings.Builder
+	sb.WriteString("001")
+	sb.WriteString(strings.Repeat("000", nOctals-1))
+	suffix, err := strconv.ParseInt(sb.String(), 2, 64)
+
+	if err != nil {
+		panic(err)
+	}
+
+	i := int(suffix)
+	for ; i < int(math.Pow(2.0, 27.0))-1; i++ {
+		_, _, _, output := process(i, 0, 0, prog)
+		if len(output) == nOctals {
+			if stringify(prog[:nOctals]) == stringify(output) {
+				break
+			}
 		}
 	}
 	return i
 }
 
-func process(registers map[string]int, prog []int) (map[string]int, []int) {
+func solve2(prog []int) int {
+	var output []int
+
+	// the 9 least significant octals that are pre-computed in ok time
+	// 001_000_101_111_001_100_111_111_101 = 18323965 in decimal
+	suffixSize := 9
+	suffix := crackSuffix(prog, suffixSize)
+	fmt.Printf("Precomputed suffix of size %d:\n", suffixSize)
+	fmt.Printf("  Decimal: %d\n  Binary: %s\n", suffix, binPretty(intToBinString(suffix)))
+	prefixBin := intToBinString(suffix)
+
+	// brute-force the 7 most significant octals starting from
+	// 001_000_000_000_000_000_000 = 262144 in decimal
+	prefix := 262144
+	var a int
+	for ; prefix < int(math.Pow(2.0, 33.0))-1; prefix++ {
+		var sb strings.Builder
+		sb.WriteString(intToBinString(prefix))
+		sb.WriteString(prefixBin)
+		new_v, err := strconv.ParseInt(sb.String(), 2, 64)
+		if err != nil {
+			panic(err)
+		}
+		a = int(new_v)
+		_, _, _, output = process(a, 0, 0, prog)
+		if len(prog) == len(output) {
+			if stringify(prog) == stringify(output) {
+				break
+			}
+		}
+	}
+
+	return a
+}
+
+func process(A, B, C int, prog []int) (int, int, int, []int) {
 	output := []int{}
 
 	i := 0
 	for i < len(prog)-1 {
-		// fmt.Printf("inst pointer: %d\n", i)
-		// fmt.Printf("registers: %v\n", registers)
 		opcode := prog[i]
 		operand := prog[i+1]
-
-		combo := calcCombo(registers, operand)
-		// fmt.Printf("Opcode: %d, operand: %d, combo: %d\n", opcode, operand, combo)
+		combo := calcCombo(A, B, C, operand)
 
 		switch opcode {
 		case 0:
-			registers["A"] = int(float64(registers["A"]) / math.Pow(2.0, float64(combo)))
+			A = int(float64(A) / math.Pow(2.0, float64(combo)))
 			i = i + 2
 		case 1:
-			registers["B"] = registers["B"] ^ operand
+			B = B ^ operand
 			i = i + 2
 		case 2:
-			registers["B"] = combo % 8
+			B = combo % 8
 			i = i + 2
 		case 3:
-			if registers["A"] == 0 {
+			if A == 0 {
 				i++
-			} else { // ?? increase by 1 or 2 if not jumping?
+			} else {
 				i = operand
 			}
 			continue
 		case 4:
-			registers["B"] = registers["B"] ^ registers["C"]
+			B = B ^ C
 			i = i + 2
 		case 5:
 			output = append(output, combo%8)
-			if prog[len(output)-1] != output[len(output)-1] {
-				return registers, output
-			}
-			// fmt.Printf("combo: %d, combo mod 8: %d\n", combo, combo%8)
-			// fmt.Printf("output: %v\n", output)
+			// if prog[len(output)-1] != output[len(output)-1] {
+			// 	return registers, output
+			// }
 			i = i + 2
 		case 6:
-			registers["B"] = int(float64(registers["A"]) / math.Pow(2.0, float64(combo)))
+			B = int(float64(A) / math.Pow(2.0, float64(combo)))
 			i = i + 2
 		case 7:
-			registers["C"] = int(float64(registers["A"]) / math.Pow(2.0, float64(combo)))
+			C = int(float64(A) / math.Pow(2.0, float64(combo)))
 			i = i + 2
 		default:
 			panic(fmt.Sprintf("unknown opcode: %d; expected opcode in range: 0-7\n", opcode))
 		}
 	}
-	return registers, output
+	return A, B, C, output
 }
 
 func parse(lines []string) (map[string]int, []int) {
@@ -166,9 +202,6 @@ func parse(lines []string) (map[string]int, []int) {
 				registers["C"] = v
 			}
 		case strings.HasPrefix(line, "Program"):
-			// for _, v := range progReg.FindSubmatch([]byte(line))[1] {
-			// 	fmt.Printf("%v\n", v)
-			// }
 			for _, v := range strings.Split(string(progReg.FindSubmatch([]byte(line))[1]), ",") {
 				if val, err := strconv.Atoi(v); err == nil {
 					prog = append(prog, val)
@@ -178,8 +211,6 @@ func parse(lines []string) (map[string]int, []int) {
 			continue
 		}
 	}
-	fmt.Printf("registers: %v\n", registers)
-	fmt.Printf("prog: %v\n", prog)
 	return registers, prog
 }
 
