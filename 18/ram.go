@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"container/heap"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 const MAX_INT = int((uint(1) << 63) - 1)
@@ -93,23 +95,29 @@ func (pq *PriorityQueue) update(c Coordinate, cost int) {
 }
 
 func main() {
+	start := time.Now()
 	lines := readLinesFromStream(os.Stdin)
 	cs := parse(lines)
 	byteLimit := 1024
+	fmt.Printf("part 1 | steps : %d\n", initGrid(cs, byteLimit).dijkstra())
+	fmt.Printf("part 2 | byte: %s\n", binSearch(cs, byteLimit).string())
+	fmt.Printf("took: %v\n", time.Now().Sub(start))
+}
 
-	for i := byteLimit; i < len(cs); i++ {
-		maze := initGrid(cs, i)
+func binSearch(cs []Coordinate, byteLimit int) Coordinate {
+	l := byteLimit
+	r := len(cs) - 1
+	for l != r {
+		m := int(math.Ceil(float64(l+r) / 2.0))
+		maze := initGrid(cs, m)
 		cnt := maze.dijkstra()
-
-		if i == byteLimit {
-			fmt.Printf("part 1 | steps : %d\n", cnt)
+		if cnt > 0 {
+			l = m
 		} else {
-			if cnt == -1 {
-				fmt.Printf("part 2 | byte: %s\n", cs[i-1].string())
-				break
-			}
+			r = m - 1
 		}
 	}
+	return cs[l]
 }
 
 func initDrawGrid(grid Grid) Grid {
@@ -170,7 +178,7 @@ func (m *Maze) dijkstra() int {
 		}
 	}
 
-	print(&drawGrid)
+	// print(&drawGrid)
 	return -1
 }
 
